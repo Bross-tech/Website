@@ -1,0 +1,471 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+
+// Dummy toast function (replace with a proper library in production)
+function notify(msg: string, type: "info" | "error" = "info") {
+  if (type === "error") alert("Error: " + msg);
+  else alert(msg);
+}
+
+type User = {
+  id: string;
+  email: string;
+  role: string;
+  deleted?: boolean;
+  [key: string]: any;
+};
+
+type Announcement = {
+  id: string;
+  admin_id: string;
+  message: string;
+  date: string;
+};
+
+type ActionLog = {
+  id: string;
+  admin_id: string;
+  action: string;
+  target_id: string;
+  date: string;
+};
+
+type Admin = {
+  id: string;
+  email?: string;
+};
+
+export function AdminDashboard({ admin }: { admin: Admin }) {
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersQuery, setUsersQuery] = useState("");
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementMsg, setAnnouncementMsg] = useState("");
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+  const [loadingLogs, setLoadingLogs] = useState(true);
+  const [logs, setLogs] = useState<ActionLog[]>([]);
+  const [error, setError] = useState("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [bulkSelection, setBulkSelection] = useState<Record<string, boolean>>({});
+
+  // Fetch and subscribe to users, announcements, logs
+  useEffect(() => {
+    let usersSub: any, announcementsSub: any, logsSub: any;
+
+    const fetchUsers = async () => {
+      setLoadingUsers(true);
+      const { data, error } = await supabase.from("users").select("*");
+      if (error) setError(error.message);
+      setUsers(data || []);
+      setLoadingUsers(false);
+    };
+
+    const fetchAnnouncements = async () => {
+      setLoadingAnnouncements(true);
+      const { data, error } = await supabase.from("announcements").select("*").order('date', { ascending: false });
+      if (error) setError(error.message);
+      setAnnouncements(data || []);
+      setLoadingAnnouncements(false);
+    };
+
+    const fetchLogs = async () => {
+      setLoadingLogs(true);
+      const { data, error } = await supabase.from("admin_logs").select("*").order('date', { ascending: false }).limit(50);
+      if (error) setError(error.message);
+      setLogs(data || []);
+      setLoadingLogs(false);
+    };
+
+    fetchUsers();
+    fetchAnnouncements();
+    fetchLogs();
+
+    usersSub = supabase
+      .channel("users_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "users" }, fetchUsers)
+      .subscribe();
+
+    announcementsSub = supabase
+      .channel("announcements_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, fetchAnnouncements)
+      .subscribe();
+
+    logsSub = supabase
+      .channel("admin_logs_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "admin_logs" }, fetchLogs)
+      .subscribe();
+
+    return () => {
+      usersSub.unsubscribe();
+      announcementsSub.unsubscribe();
+      logsSub.unsubscribe();
+    };
+  }, []);
+
+  // Filtered users for search
+  const filteredUsers = users.filter(
+    (u) =>
+      (u.email && u.email.toLowerCase().includes(usersQuery.toLowerCase())) ||
+      (u.role && u.role.toLowerCase().includes(usersQuery.toLowerCase()))
+  );
+
+  // User actions
+  const logAction = async (action: string, target_id: string) => {
+    await supabase.from("admin_logs").insert({
+      admin_id: admin.id,
+      action,
+      target_id,
+      date: new Date().toISOString(),
+    });
+  };
+
+  const blockUser = async (id: string) => {
+    const { error } = await supabase.from("users").update({ role: "blocked" }).eq("id", id);
+    if (error) {
+      setError(error.message);
+      notify("Failed to block user.", "error");
+    } else {
+      logAction("block_user", id);
+      notify("User blocked.");
+    }
+  };
+
+  const unblockUser = async (id: string) => {
+    const { error } = await supabase.from("users").update({ role: "user" }).eq("id", id);
+    if (error) {
+      setError(error.message);
+      notify("Failed to unblock user.", "error");
+    } else {
+      logAction("unblock_user", id);
+      notify("User unblocked.");
+    }
+  };
+
+  // Soft delete (mark as deleted)
+  const deleteUser = async (id: string) => {
+    const { error } = await supabase.from("users").update({ deleted: true }).eq("id", id);
+    if (error) {
+      setError(error.message);
+      notify("Failed to delete user.", "error");
+    } else {
+      logAction("delete_user", id);
+      notify("User deleted (soft).");
+    }
+  };
+
+  // Restore soft-deleted user
+  const restoreUser = async (id: string) => {
+    const { error } = await supabase.from("users").update({ deleted: false }).eq("id", id);
+    if (error) {
+      setError(error.message);
+      notify("Failed to restore user.", "error");
+    } else {
+      logAction("restore_user", id);
+      notify("User restored.");
+    }
+  };
+
+  // Bulk actions
+  const bulkBlock = async () => {
+    const ids = Object.keys(bulkSelection).filter((id) => bulkSelection[id]);
+    if (!ids.length) return;
+    const { error } = await supabase.from("users").update({ role: "blocked" }).in("id", ids);
+    if (error) {
+      setError(error.message);
+      notify("Bulk block failed.", "error");
+    } else {
+      ids.forEach((id) => logAction("block_user", id));
+      notify(`Blocked ${ids.length} user(s).`);
+    }
+    setBulkSelection({});
+  };
+
+  const bulkUnblock = async () => {
+    const ids = Object.keys(bulkSelection).filter((id) => bulkSelection[id]);
+    if (!ids.length) return;
+    const { error } = await supabase.from("users").update({ role: "user" }).in("id", ids);
+    if (error) {
+      setError(error.message);
+      notify("Bulk unblock failed.", "error");
+    } else {
+      ids.forEach((id) => logAction("unblock_user", id));
+      notify(`Unblocked ${ids.length} user(s).`);
+    }
+    setBulkSelection({});
+  };
+
+  // Announcements
+  const sendAnnouncement = async () => {
+    if (!announcementMsg.trim()) return;
+    const { error } = await supabase.from("announcements").insert({
+      admin_id: admin.id,
+      message: announcementMsg,
+      date: new Date().toISOString(),
+    });
+    if (error) {
+      setError(error.message);
+      notify("Failed to send announcement.", "error");
+    } else {
+      logAction("send_announcement", admin.id);
+      setAnnouncementMsg("");
+      notify("Announcement sent.");
+    }
+  };
+
+  const deleteAnnouncement = async (id: string) => {
+    const { error } = await supabase.from("announcements").delete().eq("id", id);
+    if (error) {
+      setError(error.message);
+      notify("Failed to delete announcement.", "error");
+    } else {
+      logAction("delete_announcement", id);
+      notify("Announcement deleted.");
+    }
+  };
+
+  // Accessibility
+  const buttonLabel = (user: User) =>
+    user.role === "blocked"
+      ? `Unblock user ${user.email}`
+      : `Block user ${user.email}`;
+
+  if (!admin?.id) {
+    return <div>Access denied. Admin login required.</div>;
+  }
+
+  // UI: User detail modal
+  const UserModal = () =>
+    selectedUser ? (
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          background: "#fff",
+          position: "fixed",
+          left: 0,
+          top: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 1000,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+        onClick={() => setSelectedUser(null)}
+      >
+        <div
+          style={{ background: "#222", color: "#fff", padding: 24, minWidth: 350 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h4>User details</h4>
+          <pre style={{ whiteSpace: "break-spaces" }}>
+            {JSON.stringify(selectedUser, null, 2)}
+          </pre>
+          <button onClick={() => setSelectedUser(null)}>Close</button>
+        </div>
+      </div>
+    ) : null;
+
+  return (
+    <div>
+      <h2>Admin Dashboard</h2>
+      {error && <div style={{ color: "red" }}>{error}</div>}
+
+      {/* Users section */}
+      <div>
+        <h3>Users</h3>
+        <input
+          type="text"
+          value={usersQuery}
+          onChange={(e) => setUsersQuery(e.target.value)}
+          placeholder="Search by email or role"
+          aria-label="Search users"
+        />
+        <div style={{ margin: "8px 0" }}>
+          <button onClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>
+            Bulk Block
+          </button>
+          <button onClick={bulkUnblock} disabled={Object.keys(bulkSelection).length === 0}>
+            Bulk Unblock
+          </button>
+        </div>
+        {loadingUsers ? (
+          <div>Loading users...</div>
+        ) : (
+          <table style={{ width: "100%", marginTop: 8, background: "#fff" }}>
+            <thead>
+              <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all"
+                    checked={
+                      filteredUsers.length > 0 &&
+                      filteredUsers.every((u) => bulkSelection[u.id])
+                    }
+                    onChange={(e) =>
+                      setBulkSelection(
+                        filteredUsers.reduce(
+                          (a, u) => ({ ...a, [u.id]: e.target.checked }),
+                          {}
+                        )
+                      )
+                    }
+                  />
+                </th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map((u) => (
+                <tr key={u.id} style={u.deleted ? { color: "#aaa", textDecoration: "line-through" } : {}}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={!!bulkSelection[u.id]}
+                      onChange={(e) =>
+                        setBulkSelection({ ...bulkSelection, [u.id]: e.target.checked })
+                      }
+                      aria-label={`Select user ${u.email}`}
+                    />
+                  </td>
+                  <td>
+                    <button
+                      style={{ background: "none", border: "none", color: "blue", cursor: "pointer" }}
+                      onClick={() => setSelectedUser(u)}
+                      aria-label={`View details for ${u.email}`}
+                    >
+                      {u.email}
+                    </button>
+                  </td>
+                  <td>{u.role}</td>
+                  <td>
+                    {u.deleted ? (
+                      <span>
+                        Deleted{" "}
+                        <button onClick={() => restoreUser(u.id)}>Restore</button>
+                      </span>
+                    ) : (
+                      "Active"
+                    )}
+                  </td>
+                  <td>
+                    {u.role === "blocked" ? (
+                      <button
+                        onClick={() => unblockUser(u.id)}
+                        aria-label={buttonLabel(u)}
+                      >
+                        Unblock
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => blockUser(u.id)}
+                        aria-label={buttonLabel(u)}
+                      >
+                        Block
+                      </button>
+                    )}
+                    {!u.deleted && (
+                      <button
+                        onClick={() => deleteUser(u.id)}
+                        aria-label={`Delete user ${u.email}`}
+                        style={{ marginLeft: 8 }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {filteredUsers.length === 0 && (
+                <tr>
+                  <td colSpan={5}>No users found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {UserModal()}
+
+      {/* Announcements section */}
+      <div style={{ marginTop: 24 }}>
+        <h3>Announcements</h3>
+        <textarea
+          value={announcementMsg}
+          onChange={(e) => setAnnouncementMsg(e.target.value)}
+          placeholder="Type announcement here..."
+          aria-label="Announcement message"
+          style={{ width: "100%", minHeight: 60 }}
+        />
+        <br />
+        <button
+          onClick={sendAnnouncement}
+          disabled={!announcementMsg.trim()}
+          aria-label="Send announcement"
+        >
+          Send
+        </button>
+        {loadingAnnouncements ? (
+          <div>Loading announcements...</div>
+        ) : (
+          <ul style={{ marginTop: 12 }}>
+            {announcements.map((a) => (
+              <li key={a.id}>
+                <div>
+                  <strong>{a.message}</strong>
+                  <div style={{ fontSize: 12, color: "#888" }}>
+                    {new Date(a.date).toLocaleString()} by {a.admin_id}
+                  </div>
+                  <button style={{ color: "red" }} onClick={() => deleteAnnouncement(a.id)}>
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+            {announcements.length === 0 && <li>No announcements yet.</li>}
+          </ul>
+        )}
+      </div>
+
+      {/* Admin logs section */}
+      <div style={{ marginTop: 24 }}>
+        <h3>Admin Action Logs</h3>
+        {loadingLogs ? (
+          <div>Loading logs...</div>
+        ) : (
+          <table style={{ width: "100%", background: "#fff" }}>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Admin</th>
+                <th>Action</th>
+                <th>Target</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log) => (
+                <tr key={log.id}>
+                  <td>{new Date(log.date).toLocaleString()}</td>
+                  <td>{log.admin_id}</td>
+                  <td>{log.action}</td>
+                  <td>{log.target_id}</td>
+                </tr>
+              ))}
+              {logs.length === 0 && (
+                <tr>
+                  <td colSpan={4}>No logs.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {/* Add more admin features as needed */}
+    </div>
+  );
+        }
+          
