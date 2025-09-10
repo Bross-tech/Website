@@ -148,4 +148,22 @@ export function PurchaseAnalytics({ user }: { user: User }) {
                 <Tooltip />
                 <Legend />
               </PieChart>
-            
+            </ResponsiveContainer>
+          </div>
+          <div style={{ margin: "32px 0" }}>
+            <h5>Spending Over Time</h5>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={dayData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="amount" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
