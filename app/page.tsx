@@ -218,3 +218,7 @@ export default function App() {
     </div>
   );
 }
+<WhatsAppWidget />
+    </div>
+  );
+}
