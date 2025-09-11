@@ -1,0 +1,9 @@
+body {
+  background-image: url('https://images.pexels.com/photos/4559714/pexels-photo-4559714.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  font-family: Arial, sans-serif;
+  color: #181818; /* Adjust for readability */
+}
