@@ -1,29 +1,25 @@
 import React from "react";
 
 interface PaystackButtonProps {
-  userId: string;
-  amount: number; // in GHS
-  email: string; // customer email
+  userId: number;
+  amount: number;
+  email: string;
+  onSuccess: (amount: number) => void;
 }
 
 export const PaystackButton: React.FC<PaystackButtonProps> = ({
   userId,
   amount,
   email,
+  onSuccess,
 }) => {
   const handlePayment = async () => {
     try {
-      if (!amount || amount <= 0) {
-        alert("Please enter a valid amount.");
-        return;
-      }
-
       const handler = (window as any).PaystackPop.setup({
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY, // public key from env
+        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
         email,
-        amount: amount * 100, // Paystack expects kobo
+        amount: amount * 100, // Paystack expects in kobo
         callback: async function (response: any) {
-          // Call backend to verify
           const res = await fetch("/api/verifyPayment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -36,7 +32,7 @@ export const PaystackButton: React.FC<PaystackButtonProps> = ({
 
           const data = await res.json();
           if (data.success) {
-            alert(`Payment of GHS ${amount} successful!`);
+            onSuccess(amount);
           } else {
             alert("Payment verification failed!");
           }
@@ -45,7 +41,6 @@ export const PaystackButton: React.FC<PaystackButtonProps> = ({
           alert("Payment cancelled.");
         },
       });
-
       handler.openIframe();
     } catch (err) {
       console.error("Payment error:", err);
@@ -56,9 +51,9 @@ export const PaystackButton: React.FC<PaystackButtonProps> = ({
   return (
     <button
       onClick={handlePayment}
-      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition w-full"
     >
-      Pay GHS {amount}
+      Deposit GHS {amount}
     </button>
   );
 };
