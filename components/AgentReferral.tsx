@@ -2,66 +2,60 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { generateReferralLink } from "../lib/referral";
 
-export function AgentReferral({ agent }: { agent: any }) {
-  const [referrals, setReferrals] = useState<{ email: string }[]>([]);
-  const [copied, setCopied] = useState(false);
+interface AgentReferralProps {
+  agent: any; // expects supabase user object
+}
+
+export function AgentReferral({ agent }: AgentReferralProps) {
+  const [referrals, setReferrals] = useState<any[]>([]);
 
   useEffect(() => {
     if (!agent?.id) return;
-    supabase
-      .from("users")
-      .select("email")
-      .eq("referrer_id", agent.id)
-      .then(({ data }) => setReferrals(data || []));
+
+    // ✅ Fetch from referrals table (joins with users for email)
+    const fetchReferrals = async () => {
+      const { data, error } = await supabase
+        .from("referrals")
+        .select("id, created_at, users!referrals_referred_id_fkey(email)")
+        .eq("referrer_id", agent.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching referrals:", error.message);
+      } else {
+        setReferrals(data || []);
+      }
+    };
+
+    fetchReferrals();
   }, [agent]);
 
-  const referralLink = generateReferralLink(agent.id);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(referralLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
-    <div className="p-4 bg-gray-900 text-white rounded-2xl shadow space-y-4">
-      <h3 className="text-lg font-bold">Your Referral Link</h3>
-
-      {/* Referral Link Box */}
-      <div className="flex items-center space-x-2">
-        <input
-          type="text"
-          value={referralLink}
-          readOnly
-          className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-sm"
-        />
-        <button
-          onClick={handleCopy}
-          className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-white transition"
-        >
-          {copied ? "Copied!" : "Copy"}
-        </button>
+    <div className="p-4 bg-gray-100 rounded shadow space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-lg flex items-center gap-2">
+          Your Referral Link
+          {/* ✅ Badge */}
+          <span className="bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
+            {referrals.length}
+          </span>
+        </h3>
       </div>
 
-      {/* Referral Count */}
-      <div className="font-semibold">
-        Referred Users: {referrals.length}
-      </div>
+      <input
+        type="text"
+        value={generateReferralLink(agent.id)}
+        readOnly
+        className="w-full border p-2 rounded bg-gray-50"
+      />
 
-      {/* Referral List */}
-      <ul className="space-y-1 text-sm">
-        {referrals.length > 0 ? (
-          referrals.map((u) => (
-            <li
-              key={u.email}
-              className="p-2 bg-gray-800 rounded border border-gray-700"
-            >
-              {u.email}
-            </li>
-          ))
-        ) : (
-          <li className="text-gray-400">No referrals yet.</li>
-        )}
+      <ul className="list-disc list-inside text-sm text-gray-700">
+        {referrals.map((ref) => (
+          <li key={ref.id}>
+            {ref.users?.email || "Unknown user"} (
+            {new Date(ref.created_at).toLocaleDateString()})
+          </li>
+        ))}
       </ul>
     </div>
   );
