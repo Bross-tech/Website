@@ -1,38 +1,49 @@
 import React from "react";
 
 interface PaystackButtonProps {
-  userId: number;
+  userId: string;
   amount: number; // in GHS
-  email: string;
+  email: string; // customer email
 }
 
-export const PaystackButton: React.FC<PaystackButtonProps> = ({ userId, amount, email }) => {
+export const PaystackButton: React.FC<PaystackButtonProps> = ({
+  userId,
+  amount,
+  email,
+}) => {
   const handlePayment = async () => {
     try {
+      if (!amount || amount <= 0) {
+        alert("Please enter a valid amount.");
+        return;
+      }
+
       const handler = (window as any).PaystackPop.setup({
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY, // public key from .env
+        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY, // public key from env
         email,
-        amount: amount * 100, // convert GHS to Kobo
+        amount: amount * 100, // Paystack expects kobo
         callback: async function (response: any) {
-          // Send reference to backend for verification
+          // Call backend to verify
           const res = await fetch("/api/verifyPayment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               reference: response.reference,
               userId,
-              amount
-            })
+              amount,
+            }),
           });
 
           const data = await res.json();
-
-          if (data.success) alert("Payment successful!");
-          else alert("Payment verification failed!");
+          if (data.success) {
+            alert(`Payment of GHS ${amount} successful!`);
+          } else {
+            alert("Payment verification failed!");
+          }
         },
         onClose: function () {
           alert("Payment cancelled.");
-        }
+        },
       });
 
       handler.openIframe();
