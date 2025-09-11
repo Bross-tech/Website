@@ -16,10 +16,28 @@ export function DarkModeToggle() {
     }
   }, []);
 
-  // Update body class and localStorage whenever dark changes
+  // Update body class, localStorage, and CSS variables
   useEffect(() => {
-    if (dark === null) return; // Wait until state is initialized
-    document.body.classList.toggle("dark", dark);
+    if (dark === null) return;
+
+    const root = document.documentElement;
+
+    if (dark) {
+      document.body.classList.add("dark");
+      root.style.setProperty("--bg", "#181818");
+      root.style.setProperty("--fg", "#f1f1f1");
+      root.style.setProperty("--btn-bg", "#262626");
+      root.style.setProperty("--btn-fg", "#f1f1f1");
+      root.style.setProperty("--btn-border", "#555");
+    } else {
+      document.body.classList.remove("dark");
+      root.style.setProperty("--bg", "#ffffff");
+      root.style.setProperty("--fg", "#181818");
+      root.style.setProperty("--btn-bg", "#f1f1f1");
+      root.style.setProperty("--btn-fg", "#181818");
+      root.style.setProperty("--btn-border", "#ccc");
+    }
+
     localStorage.setItem("dark_mode", String(dark));
   }, [dark]);
 
@@ -36,7 +54,12 @@ export function DarkModeToggle() {
 
   return (
     <button
-      className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition"
+      className="px-4 py-2 rounded transition border"
+      style={{
+        background: "var(--btn-bg)",
+        color: "var(--btn-fg)",
+        borderColor: "var(--btn-border)",
+      }}
       onClick={() => setDark((d) => !d)}
       aria-pressed={dark}
     >
