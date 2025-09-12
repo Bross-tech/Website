@@ -1,16 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import africastalking from "africastalking";
+import { supabase } from "../../lib/supabaseClient";
 
-// --- Setup Africa's Talking ---
-const at = africastalking({
+const africasTalking = africastalking({
   apiKey: process.env.AT_API_KEY as string,
   username: process.env.AT_USERNAME as string,
 });
 
-// Use your sandbox or live SMS service
-const sms = at.SMS;
+const sms = africasTalking.SMS;
 
-// Hardcoded admin number (you can also move this to env vars later)
 const ADMIN_NUMBER = "+233556429525";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -19,27 +17,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { phone, amount, product } = req.body;
+    const { phone, amount, data_plan, id } = req.body;
 
-    if (!phone || !amount || !product) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (!phone) {
+      return res.status(400).json({ error: "Customer phone is required" });
     }
 
-    const message = `New Purchase Alert 📢:
-Product: ${product}
-Amount: GHS ${amount}
-Customer: ${phone}`;
+    const customerMessage = `Your purchase of ${data_plan} for GHS ${amount} was successful. Ref: ${id}.`;
+    const adminMessage = `New order received!\nPlan: ${data_plan}\nAmount: GHS ${amount}\nCustomer: ${phone}\nRef: ${id}`;
 
-    // Send SMS to the admin
-    await sms.send({
-      to: [ADMIN_NUMBER],
-      message,
-      from: process.env.AT_SHORTCODE || "", // optional: if you set an alphanumeric sender ID
+    const recipients = [phone, ADMIN_NUMBER];
+    const fullMessage = `${customerMessage}\n\n---\n${adminMessage}`;
+
+    // Send SMS
+    const response = await sms.send({
+      to: recipients,
+      message: fullMessage,
+      from: process.env.AT_SENDER_ID || "DatastoreGH",
     });
 
-    return res.status(200).json({ success: true, message: "Admin notified via SMS" });
+    // Log SMS results to Supabase
+    if (response.SMSMessageData && response.SMSMessageData.Recipients) {
+      for (const r of response.SMSMessageData.Recipients) {
+        await supabase.from("sms_logs").insert({
+          recipient: r.number,
+          message: fullMessage,
+          status: r.status,
+          error: r.status !== "Success" ? r.status : null,
+        });
+      }
+    }
+
+    return res.status(200).json({ success: true, msg: "SMS sent & logged" });
   } catch (error: any) {
-    console.error("SMS Error:", error);
-    return res.status(500).json({ error: "Failed to send SMS" });
+    console.error("SMS error:", error);
+
+    // Log failed SMS attempt
+    await supabase.from("sms_logs").insert({
+      recipient: ADMIN_NUMBER,
+      message: "Failed to send SMS notification",
+      status: "failed",
+      error: error.message,
+    });
+
+    return res.status(500).json({ error: "Failed to send SMS", details: error.message });
   }
-  }
+}
