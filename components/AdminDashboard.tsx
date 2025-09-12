@@ -1,4 +1,29 @@
-[logs, setLogs] = useState<ActionLog[]>([]);
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+import { SupportTickets } from "./SupportTickets";
+import { PurchaseAnalytics } from "./PurchaseAnalytics";
+import { DarkModeToggle } from "./DarkModeToggle";
+import { ExportCSV } from "./ExportCSV";
+import { WhatsAppWidget } from "./WhatsAppWidget";
+
+// Dummy toast function
+function notify(msg: string, type: "info" | "error" = "info") {
+  if (type === "error") alert("Error: " + msg);
+  else alert(msg);
+}
+
+// --- Types ---
+type User = { id: string; email: string; username?: string; phone?: string; role: string; deleted?: boolean; [key: string]: any };
+type Announcement = { id: string; admin_id: string; message: string; date: string };
+type ActionLog = { id: string; admin_id: string; action: string; target_id: string; date: string };
+type Admin = { id: string; email?: string };
+
+export function AdminDashboard({ admin }: { admin: Admin }) {
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersQuery, setUsersQuery] = useState("");
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementMsg, setAnnouncementMsg] = useState("");
+  const [logs, setLogs] = useState<ActionLog[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
   const [loadingLogs, setLoadingLogs] = useState(true);
@@ -21,10 +46,7 @@
 
     const fetchAnnouncements = async () => {
       setLoadingAnnouncements(true);
-      const { data, error } = await supabase
-        .from("announcements")
-        .select("*")
-        .order("date", { ascending: false });
+      const { data, error } = await supabase.from("announcements").select("*").order("date", { ascending: false });
       if (error) setError(error.message);
       setAnnouncements(data || []);
       setLoadingAnnouncements(false);
@@ -32,11 +54,7 @@
 
     const fetchLogs = async () => {
       setLoadingLogs(true);
-      const { data, error } = await supabase
-        .from("admin_logs")
-        .select("*")
-        .order("date", { ascending: false })
-        .limit(50);
+      const { data, error } = await supabase.from("admin_logs").select("*").order("date", { ascending: false }).limit(50);
       if (error) setError(error.message);
       setLogs(data || []);
       setLoadingLogs(false);
@@ -72,6 +90,7 @@
   const filteredUsers = users.filter(
     (u) =>
       (u.email && u.email.toLowerCase().includes(usersQuery.toLowerCase())) ||
+      (u.username && u.username.toLowerCase().includes(usersQuery.toLowerCase())) ||
       (u.role && u.role.toLowerCase().includes(usersQuery.toLowerCase()))
   );
 
@@ -236,65 +255,32 @@
       </div>
 
       {/* --- Tab Content --- */}
-      <div>
-        {activeTab === "users" && (
-          <div>
-            <input
-              type="text"
-              value={usersQuery}
-              onChange={(e) => setUsersQuery(e.target.value)}
-              placeholder="Search by email or role"
-              aria-label="Search users"
-              style={{ marginBottom: 8 }}
-            />
-            <div style={{ marginBottom: 8 }}>
-              <button onClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>
-                Bulk Block
-              </button>
-              <button onClick={bulkUnblock} disabled={Object.keys(bulkSelection).length === 0}>
-                Bulk Unblock
-              </button>
-              <ExportCSV data={filteredUsers} filename="users_export.csv" />
-            </div>
-            {loadingUsers ? (
-              <div>Loading users...</div>
-            ) : (
-              <table style={{ width: "100%", marginTop: 8, background: "#fff" }}>
-                <thead>
-                  <tr>
-                    <th>
-                      <input
-                        type="checkbox"
-                        aria-label="Select all"
-                        checked={
-                          filteredUsers.length > 0 &&
-                          filteredUsers.every((u) => bulkSelection[u.id])
-                        }
-                        onChange={(e) =>
-                          setBulkSelection(
-                            filteredUsers.reduce(
-                              (a, u) => ({ ...a, [u.id]: e.target.checked }),
-                              {}
-                            )
-                          )
-                        }
-                      />
-                    </th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((u) => (
-                    <tr key={u.id} style={u.deleted ? { color: "#aaa", textDecoration: "line-through" } : {}}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={!!bulkSelection[u.id]}
-                          onChange={(e) =>
-                            setBulkSelection({ ...bulkSelection, [u.id]: e.target.checked })
+      {activeTab === "users" && (
+        <div>
+          <input
+            type="text"
+            value={usersQuery}
+            onChange={(e) => setUsersQuery(e.target.value)}
+            placeholder="Search by email, username, or role"
+            aria-label="Search users"
+            style={{ marginBottom: 8 }}
+          />
+          <div style={{ marginBottom: 8 }}>
+            <button onClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>Bulk Block</button>
+            <button onClick={bulkUnblock} disabled={Object.keys(bulkSelection).length === 0}>Bulk Unblock</button>
+            <ExportCSV data={filteredUsers} filename="users_export.csv" />
+          </div>
+          {loadingUsers ? (
+            <div>Loading users...</div>
+          ) : (
+            <table style={{ width: "100%", marginTop: 8, background: "#fff" }}>
+              <thead>
+                <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      aria-label="Select all"
+                      checked={filteredUsers
 // components/AdminDashboard.tsx
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
