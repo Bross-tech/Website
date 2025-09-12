@@ -1,54 +1,38 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { SupportTickets } from "./SupportTickets";
+import { PurchaseAnalytics } from "./PurchaseAnalytics";
+import { DarkModeToggle } from "./DarkModeToggle";
+import { ExportCSV } from "./ExportCSV";
+import { WhatsAppWidget } from "./WhatsAppWidget";
 
-// Dummy toast function (replace with a proper library in production)
+// Dummy toast function
 function notify(msg: string, type: "info" | "error" = "info") {
   if (type === "error") alert("Error: " + msg);
   else alert(msg);
 }
 
-type User = {
-  id: string;
-  email: string;
-  role: string;
-  deleted?: boolean;
-  [key: string]: any;
-};
-
-type Announcement = {
-  id: string;
-  admin_id: string;
-  message: string;
-  date: string;
-};
-
-type ActionLog = {
-  id: string;
-  admin_id: string;
-  action: string;
-  target_id: string;
-  date: string;
-};
-
-type Admin = {
-  id: string;
-  email?: string;
-};
+// --- Types ---
+type User = { id: string; email: string; role: string; deleted?: boolean; [key: string]: any };
+type Announcement = { id: string; admin_id: string; message: string; date: string };
+type ActionLog = { id: string; admin_id: string; action: string; target_id: string; date: string };
+type Admin = { id: string; email?: string };
 
 export function AdminDashboard({ admin }: { admin: Admin }) {
   const [users, setUsers] = useState<User[]>([]);
   const [usersQuery, setUsersQuery] = useState("");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementMsg, setAnnouncementMsg] = useState("");
+  const [logs, setLogs] = useState<ActionLog[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
   const [loadingLogs, setLoadingLogs] = useState(true);
-  const [logs, setLogs] = useState<ActionLog[]>([]);
   const [error, setError] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [bulkSelection, setBulkSelection] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<"users" | "tickets" | "analytics" | "announcements" | "logs">("users");
 
-  // Fetch and subscribe to users, announcements, logs
+  // --- Fetch data ---
   useEffect(() => {
     let usersSub: any, announcementsSub: any, logsSub: any;
 
@@ -62,7 +46,10 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
     const fetchAnnouncements = async () => {
       setLoadingAnnouncements(true);
-      const { data, error } = await supabase.from("announcements").select("*").order('date', { ascending: false });
+      const { data, error } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("date", { ascending: false });
       if (error) setError(error.message);
       setAnnouncements(data || []);
       setLoadingAnnouncements(false);
@@ -70,7 +57,11 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
     const fetchLogs = async () => {
       setLoadingLogs(true);
-      const { data, error } = await supabase.from("admin_logs").select("*").order('date', { ascending: false }).limit(50);
+      const { data, error } = await supabase
+        .from("admin_logs")
+        .select("*")
+        .order("date", { ascending: false })
+        .limit(50);
       if (error) setError(error.message);
       setLogs(data || []);
       setLoadingLogs(false);
@@ -102,14 +93,16 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
     };
   }, []);
 
-  // Filtered users for search
+  // --- Filtered users ---
   const filteredUsers = users.filter(
     (u) =>
       (u.email && u.email.toLowerCase().includes(usersQuery.toLowerCase())) ||
       (u.role && u.role.toLowerCase().includes(usersQuery.toLowerCase()))
   );
 
-  // User actions
+  if (!admin?.id) return <div>Access denied. Admin login required.</div>;
+
+  // --- User Actions ---
   const logAction = async (action: string, target_id: string) => {
     await supabase.from("admin_logs").insert({
       admin_id: admin.id,
@@ -121,10 +114,8 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
   const blockUser = async (id: string) => {
     const { error } = await supabase.from("users").update({ role: "blocked" }).eq("id", id);
-    if (error) {
-      setError(error.message);
-      notify("Failed to block user.", "error");
-    } else {
+    if (error) notify("Failed to block user.", "error");
+    else {
       logAction("block_user", id);
       notify("User blocked.");
     }
@@ -132,48 +123,37 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
   const unblockUser = async (id: string) => {
     const { error } = await supabase.from("users").update({ role: "user" }).eq("id", id);
-    if (error) {
-      setError(error.message);
-      notify("Failed to unblock user.", "error");
-    } else {
+    if (error) notify("Failed to unblock user.", "error");
+    else {
       logAction("unblock_user", id);
       notify("User unblocked.");
     }
   };
 
-  // Soft delete (mark as deleted)
   const deleteUser = async (id: string) => {
     const { error } = await supabase.from("users").update({ deleted: true }).eq("id", id);
-    if (error) {
-      setError(error.message);
-      notify("Failed to delete user.", "error");
-    } else {
+    if (error) notify("Failed to delete user.", "error");
+    else {
       logAction("delete_user", id);
       notify("User deleted (soft).");
     }
   };
 
-  // Restore soft-deleted user
   const restoreUser = async (id: string) => {
     const { error } = await supabase.from("users").update({ deleted: false }).eq("id", id);
-    if (error) {
-      setError(error.message);
-      notify("Failed to restore user.", "error");
-    } else {
+    if (error) notify("Failed to restore user.", "error");
+    else {
       logAction("restore_user", id);
       notify("User restored.");
     }
   };
 
-  // Bulk actions
   const bulkBlock = async () => {
     const ids = Object.keys(bulkSelection).filter((id) => bulkSelection[id]);
     if (!ids.length) return;
     const { error } = await supabase.from("users").update({ role: "blocked" }).in("id", ids);
-    if (error) {
-      setError(error.message);
-      notify("Bulk block failed.", "error");
-    } else {
+    if (error) notify("Bulk block failed.", "error");
+    else {
       ids.forEach((id) => logAction("block_user", id));
       notify(`Blocked ${ids.length} user(s).`);
     }
@@ -184,17 +164,15 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
     const ids = Object.keys(bulkSelection).filter((id) => bulkSelection[id]);
     if (!ids.length) return;
     const { error } = await supabase.from("users").update({ role: "user" }).in("id", ids);
-    if (error) {
-      setError(error.message);
-      notify("Bulk unblock failed.", "error");
-    } else {
+    if (error) notify("Bulk unblock failed.", "error");
+    else {
       ids.forEach((id) => logAction("unblock_user", id));
       notify(`Unblocked ${ids.length} user(s).`);
     }
     setBulkSelection({});
   };
 
-  // Announcements
+  // --- Announcements ---
   const sendAnnouncement = async () => {
     if (!announcementMsg.trim()) return;
     const { error } = await supabase.from("announcements").insert({
@@ -202,10 +180,8 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
       message: announcementMsg,
       date: new Date().toISOString(),
     });
-    if (error) {
-      setError(error.message);
-      notify("Failed to send announcement.", "error");
-    } else {
+    if (error) notify("Failed to send announcement.", "error");
+    else {
       logAction("send_announcement", admin.id);
       setAnnouncementMsg("");
       notify("Announcement sent.");
@@ -214,26 +190,14 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
   const deleteAnnouncement = async (id: string) => {
     const { error } = await supabase.from("announcements").delete().eq("id", id);
-    if (error) {
-      setError(error.message);
-      notify("Failed to delete announcement.", "error");
-    } else {
+    if (error) notify("Failed to delete announcement.", "error");
+    else {
       logAction("delete_announcement", id);
       notify("Announcement deleted.");
     }
   };
 
-  // Accessibility
-  const buttonLabel = (user: User) =>
-    user.role === "blocked"
-      ? `Unblock user ${user.email}`
-      : `Block user ${user.email}`;
-
-  if (!admin?.id) {
-    return <div>Access denied. Admin login required.</div>;
-  }
-
-  // UI: User detail modal
+  // --- Modal for user details ---
   const UserModal = () =>
     selectedUser ? (
       <div
@@ -258,74 +222,104 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
           onClick={(e) => e.stopPropagation()}
         >
           <h4>User details</h4>
-          <pre style={{ whiteSpace: "break-spaces" }}>
-            {JSON.stringify(selectedUser, null, 2)}
-          </pre>
+          <pre style={{ whiteSpace: "break-spaces" }}>{JSON.stringify(selectedUser, null, 2)}</pre>
           <button onClick={() => setSelectedUser(null)}>Close</button>
         </div>
       </div>
     ) : null;
 
+  // --- Tab Button Component ---
+  const TabButton = ({ tab, label }: { tab: typeof activeTab; label: string }) => (
+    <button
+      onClick={() => setActiveTab(tab)}
+      style={{
+        marginRight: 8,
+        padding: "6px 12px",
+        background: activeTab === tab ? "#2196f3" : "#eee",
+        color: activeTab === tab ? "#fff" : "#000",
+        border: "none",
+        borderRadius: 4,
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <div>
+    <div style={{ padding: 16 }}>
       <h2>Admin Dashboard</h2>
+      <DarkModeToggle />
       {error && <div style={{ color: "red" }}>{error}</div>}
 
-      {/* Users section */}
+      <div style={{ margin: "16px 0" }}>
+        <TabButton tab="users" label="Users" />
+        <TabButton tab="tickets" label="Support Tickets" />
+        <TabButton tab="analytics" label="Purchase Analytics" />
+        <TabButton tab="announcements" label="Announcements" />
+        <TabButton tab="logs" label="Admin Logs" />
+      </div>
+
+      {/* --- Tab Content --- */}
       <div>
-        <h3>Users</h3>
-        <input
-          type="text"
-          value={usersQuery}
-          onChange={(e) => setUsersQuery(e.target.value)}
-          placeholder="Search by email or role"
-          aria-label="Search users"
-        />
-        <div style={{ margin: "8px 0" }}>
-          <button onClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>
-            Bulk Block
-          </button>
-          <button onClick={bulkUnblock} disabled={Object.keys(bulkSelection).length === 0}>
-            Bulk Unblock
-          </button>
-        </div>
-        {loadingUsers ? (
-          <div>Loading users...</div>
-        ) : (
-          <table style={{ width: "100%", marginTop: 8, background: "#fff" }}>
-            <thead>
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    aria-label="Select all"
-                    checked={
-                      filteredUsers.length > 0 &&
-                      filteredUsers.every((u) => bulkSelection[u.id])
-                    }
-                    onChange={(e) =>
-                      setBulkSelection(
-                        filteredUsers.reduce(
-                          (a, u) => ({ ...a, [u.id]: e.target.checked }),
-                          {}
-                        )
-                      )
-                    }
-                  />
-                </th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((u) => (
-                <tr key={u.id} style={u.deleted ? { color: "#aaa", textDecoration: "line-through" } : {}}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={!!bulkSelection[u.id]}
+        {activeTab === "users" && (
+          <div>
+            <input
+              type="text"
+              value={usersQuery}
+              onChange={(e) => setUsersQuery(e.target.value)}
+              placeholder="Search by email or role"
+              aria-label="Search users"
+              style={{ marginBottom: 8 }}
+            />
+            <div style={{ marginBottom: 8 }}>
+              <button onClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>
+                Bulk Block
+              </button>
+              <button onClick={bulkUnblock} disabled={Object.keys(bulkSelection).length === 0}>
+                Bulk Unblock
+              </button>
+              <ExportCSV data={filteredUsers} filename="users_export.csv" />
+            </div>
+            {loadingUsers ? (
+              <div>Loading users...</div>
+            ) : (
+              <table style={{ width: "100%", marginTop: 8, background: "#fff" }}>
+                <thead>
+                  <tr>
+                    <th>
+                      <input
+                        type="checkbox"
+                        aria-label="Select all"
+                        checked={
+                          filteredUsers.length > 0 &&
+                          filteredUsers.every((u) => bulkSelection[u.id])
+                        }
+                        onChange={(e) =>
+                          setBulkSelection(
+                            filteredUsers.reduce(
+                              (a, u) => ({ ...a, [u.id]: e.target.checked }),
+                              {}
+                            )
+                          )
+                        }
+                      />
+                    </th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id} style={u.deleted ? { color: "#aaa", textDecoration: "line-through" } : {}}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={!!bulkSelection[u.id]}
+                          onChange={(e) =>
+                            setBulkSelection({ ...bulkSelection, [u.id]: e.target.checked })           checked={!!bulkSelection[u.id]}
                       onChange={(e) =>
                         setBulkSelection({ ...bulkSelection, [u.id]: e.target.checked })
                       }
@@ -466,6 +460,4 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
       </div>
       {/* Add more admin features as needed */}
     </div>
-  );
-        }
-          
+  )
