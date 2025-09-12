@@ -13,7 +13,15 @@ function notify(msg: string, type: "info" | "error" = "info") {
 }
 
 // --- Types ---
-type User = { id: string; email: string; username?: string; phone?: string; role: string; deleted?: boolean; [key: string]: any };
+type User = {
+  id: string;
+  email: string;
+  username?: string;
+  phone?: string;
+  role: string;
+  deleted?: boolean;
+  [key: string]: any;
+};
 type Announcement = { id: string; admin_id: string; message: string; date: string };
 type ActionLog = { id: string; admin_id: string; action: string; target_id: string; date: string };
 type Admin = { id: string; email?: string };
@@ -30,11 +38,13 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
   const [error, setError] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [bulkSelection, setBulkSelection] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<"users" | "tickets" | "analytics" | "announcements" | "logs">("users");
+  const [activeTab, setActiveTab] = useState<
+    "users" | "tickets" | "analytics" | "announcements" | "logs"
+  >("users");
 
   // --- Fetch data ---
   useEffect(() => {
-    let usersSub: any, announcementsSub: any, logsSub: any;
+    let usersSub: any, announcementsSub: any, logsSub: any, purchasesSub: any;
 
     const fetchUsers = async () => {
       setLoadingUsers(true);
@@ -46,7 +56,10 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
     const fetchAnnouncements = async () => {
       setLoadingAnnouncements(true);
-      const { data, error } = await supabase.from("announcements").select("*").order("date", { ascending: false });
+      const { data, error } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("date", { ascending: false });
       if (error) setError(error.message);
       setAnnouncements(data || []);
       setLoadingAnnouncements(false);
@@ -54,7 +67,11 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
     const fetchLogs = async () => {
       setLoadingLogs(true);
-      const { data, error } = await supabase.from("admin_logs").select("*").order("date", { ascending: false }).limit(50);
+      const { data, error } = await supabase
+        .from("admin_logs")
+        .select("*")
+        .order("date", { ascending: false })
+        .limit(50);
       if (error) setError(error.message);
       setLogs(data || []);
       setLoadingLogs(false);
@@ -64,6 +81,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
     fetchAnnouncements();
     fetchLogs();
 
+    // Subscriptions
     usersSub = supabase
       .channel("users_changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "users" }, fetchUsers)
@@ -79,10 +97,31 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "admin_logs" }, fetchLogs)
       .subscribe();
 
+    // Purchases subscription for SMS notification
+    purchasesSub = supabase
+      .channel("purchases_changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "purchases" },
+        async (payload) => {
+          try {
+            await fetch("/api/smsNotify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload.new),
+            });
+          } catch (err) {
+            console.error("Failed to send SMS notification:", err);
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       usersSub.unsubscribe();
       announcementsSub.unsubscribe();
       logsSub.unsubscribe();
+      purchasesSub.unsubscribe();
     };
   }, []);
 
@@ -266,8 +305,12 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
             style={{ marginBottom: 8 }}
           />
           <div style={{ marginBottom: 8 }}>
-            <button onClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>Bulk Block</button>
-            <button onClick={bulkUnblock} disabled={Object.keys(bulkSelection).length === 0}>Bulk Unblock</button>
+            <button onClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>
+              Bulk Block
+            </button>
+            <button onClick={bulkUnblock} disabled={Object.keys(bulkSelection).length === 0}>
+              Bulk Unblock
+            </button>
             <ExportCSV data={filteredUsers} filename="users_export.csv" />
           </div>
           {loadingUsers ? (
@@ -280,10 +323,116 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
                     <input
                       type="checkbox"
                       aria-label="Select all"
-                      checked={filteredUsers
-// components/AdminDashboard.tsx
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+                      checked={
+                        filteredUsers.length > 0 &&
+                        filteredUsers.every((u) => bulkSelection[u.id])
+                      }
+                      onChange={(e) =>
+                        setBulkSelection(
+                          filteredUsers.reduce(
+                            (a, u) => ({ ...a, [u.id]: e.target.checked }),
+                            {}
+                          )
+                        )
+                      }
+                    />
+                  </th>
+                  <th>Email</th>
+                  <th>Username</th>
+                  <th>Phone</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((u) => (
+                  <tr
+                    key={u.id}
+                    style={u.deleted ? { color: "#aaa", textDecoration: "line-through" } : {}}
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={!!bulkSelection[u.id]}
+                        onChange={(e) =>
+                          setBulkSelection({ ...bulkSelection, [u.id]: e.target.checked })
+                        }
+                      />
+                    </td>
+                    <td>{u.email}</td>
+                    <td>{u.username}</td>
+                    <td>{u.phone}</td>
+                    <td>{u.role}</td>
+                    <td>{u.deleted ? "Deleted" : "Active"}</td>
+                    <td>
+                      <button onClick={() => setSelectedUser(u)}>View</button>
+                      {u.role !== "blocked" ? (
+                        <button onClick={() => blockUser(u.id)}>Block</button>
+                      ) : (
+                        <button onClick={() => unblockUser(u.id)}>Unblock</button>
+                      )}
+                      {!u.deleted ? (
+                        <button onClick={() => deleteUser(u.id)}>Delete</button>
+                      ) : (
+                        <button onClick={() => restoreUser(u.id)}>Restore</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <UserModal />
+        </div>
+      )}
+
+      {activeTab === "tickets" && <SupportTickets />}
+      {activeTab === "analytics" && <PurchaseAnalytics />}
+      {activeTab === "announcements" && (
+        <div>
+          <h3>Announcements</h3>
+          <textarea
+            value={announcementMsg}
+            onChange={(e) => setAnnouncementMsg(e.target.value)}
+            placeholder="Write announcement..."
+          />
+          <button onClick={sendAnnouncement}>Send</button>
+          {loadingAnnouncements ? (
+            <div>Loading announcements...</div>
+          ) : (
+            <ul>
+              {announcements.map((a) => (
+                <li key={a.id}>
+                  {a.message} - {a.date}
+                  <button onClick={() => deleteAnnouncement(a.id)}>Delete</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {activeTab === "logs" && (
+        <div>
+          <h3>Admin Logs</h3>
+          {loadingLogs ? (
+            <div>Loading logs...</div>
+          ) : (
+            <ul>
+              {logs.map((log) => (
+                <li key={log.id}>
+                  {log.date}: {log.action} (target: {log.target_id})
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <WhatsAppWidget />
+    </div>
+  );
+        }abase } from "../lib/supabaseClient";
 import { SupportTickets } from "./SupportTickets";
 import { PurchaseAnalytics } from "./PurchaseAnalytics";
 import { DarkModeToggle } from "./DarkModeToggle";
