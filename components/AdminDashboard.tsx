@@ -4,24 +4,15 @@ import { SupportTickets } from "./SupportTickets";
 import { PurchaseAnalytics } from "./PurchaseAnalytics";
 import { DarkModeToggle } from "./DarkModeToggle";
 import { ExportCSV } from "./ExportCSV";
-import { WhatsAppWidget } from "./WhatsAppWidget";
 
-// Dummy toast function
+// Dummy notify
 function notify(msg: string, type: "info" | "error" = "info") {
   if (type === "error") alert("Error: " + msg);
   else alert(msg);
 }
 
-// --- Types ---
-type User = {
-  id: string;
-  email: string;
-  username?: string;
-  phone?: string;
-  role: string;
-  deleted?: boolean;
-  [key: string]: any;
-};
+// Types
+type User = { id: string; email: string; username?: string; phone?: string; role: string; deleted?: boolean; [key: string]: any };
 type Announcement = { id: string; admin_id: string; message: string; date: string };
 type ActionLog = { id: string; admin_id: string; action: string; target_id: string; date: string };
 type Admin = { id: string; email?: string };
@@ -38,13 +29,11 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
   const [error, setError] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [bulkSelection, setBulkSelection] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<
-    "users" | "tickets" | "analytics" | "announcements" | "logs"
-  >("users");
+  const [activeTab, setActiveTab] = useState<"users" | "tickets" | "analytics" | "announcements" | "logs">("users");
 
-  // --- Fetch data ---
+  // Fetch data + subscribe
   useEffect(() => {
-    let usersSub: any, announcementsSub: any, logsSub: any, purchasesSub: any;
+    let usersSub: any, announcementsSub: any, logsSub: any, purchasesSub: any, depositsSub: any;
 
     const fetchUsers = async () => {
       setLoadingUsers(true);
@@ -56,10 +45,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
     const fetchAnnouncements = async () => {
       setLoadingAnnouncements(true);
-      const { data, error } = await supabase
-        .from("announcements")
-        .select("*")
-        .order("date", { ascending: false });
+      const { data, error } = await supabase.from("announcements").select("*").order("date", { ascending: false });
       if (error) setError(error.message);
       setAnnouncements(data || []);
       setLoadingAnnouncements(false);
@@ -67,11 +53,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
     const fetchLogs = async () => {
       setLoadingLogs(true);
-      const { data, error } = await supabase
-        .from("admin_logs")
-        .select("*")
-        .order("date", { ascending: false })
-        .limit(50);
+      const { data, error } = await supabase.from("admin_logs").select("*").order("date", { ascending: false }).limit(50);
       if (error) setError(error.message);
       setLogs(data || []);
       setLoadingLogs(false);
@@ -82,39 +64,44 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
     fetchLogs();
 
     // Subscriptions
-    usersSub = supabase
-      .channel("users_changes")
+    usersSub = supabase.channel("users_changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "users" }, fetchUsers)
       .subscribe();
 
-    announcementsSub = supabase
-      .channel("announcements_changes")
+    announcementsSub = supabase.channel("announcements_changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, fetchAnnouncements)
       .subscribe();
 
-    logsSub = supabase
-      .channel("admin_logs_changes")
+    logsSub = supabase.channel("admin_logs_changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "admin_logs" }, fetchLogs)
       .subscribe();
 
-    // Purchases subscription for SMS notification
-    purchasesSub = supabase
-      .channel("purchases_changes")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "purchases" },
-        async (payload) => {
-          try {
-            await fetch("/api/smsNotify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload.new),
-            });
-          } catch (err) {
-            console.error("Failed to send SMS notification:", err);
-          }
-        }
-      )
+    // Purchases → notify admin
+    purchasesSub = supabase.channel("purchases_changes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "purchases" }, async (payload) => {
+        await fetch("/api/smsNotify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "purchase",
+            ...payload.new,
+          }),
+        });
+      })
+      .subscribe();
+
+    // Deposits → notify user
+    depositsSub = supabase.channel("deposits_changes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "deposits" }, async (payload) => {
+        await fetch("/api/smsNotify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "deposit",
+            ...payload.new,
+          }),
+        });
+      })
       .subscribe();
 
     return () => {
@@ -122,10 +109,11 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
       announcementsSub.unsubscribe();
       logsSub.unsubscribe();
       purchasesSub.unsubscribe();
+      depositsSub.unsubscribe();
     };
   }, []);
 
-  // --- Filtered users ---
+  // Filter users
   const filteredUsers = users.filter(
     (u) =>
       (u.email && u.email.toLowerCase().includes(usersQuery.toLowerCase())) ||
@@ -135,7 +123,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
 
   if (!admin?.id) return <div>Access denied. Admin login required.</div>;
 
-  // --- User Actions ---
+  // Logs
   const logAction = async (action: string, target_id: string) => {
     await supabase.from("admin_logs").insert({
       admin_id: admin.id,
@@ -145,6 +133,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
     });
   };
 
+  // User actions
   const blockUser = async (id: string) => {
     const { error } = await supabase.from("users").update({ role: "blocked" }).eq("id", id);
     if (error) notify("Failed to block user.", "error");
@@ -168,7 +157,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
     if (error) notify("Failed to delete user.", "error");
     else {
       logAction("delete_user", id);
-      notify("User deleted (soft).");
+      notify("User deleted.");
     }
   };
 
@@ -181,6 +170,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
     }
   };
 
+  // Bulk actions
   const bulkBlock = async () => {
     const ids = Object.keys(bulkSelection).filter((id) => bulkSelection[id]);
     if (!ids.length) return;
@@ -205,7 +195,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
     setBulkSelection({});
   };
 
-  // --- Announcements ---
+  // Announcements
   const sendAnnouncement = async () => {
     if (!announcementMsg.trim()) return;
     const { error } = await supabase.from("announcements").insert({
@@ -230,7 +220,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
     }
   };
 
-  // --- Modal for user details ---
+  // User details modal
   const UserModal = () =>
     selectedUser ? (
       <div
@@ -261,7 +251,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
       </div>
     ) : null;
 
-  // --- Tab Button Component ---
+  // Tab button
   const TabButton = ({ tab, label }: { tab: typeof activeTab; label: string }) => (
     <button
       onClick={() => setActiveTab(tab)}
@@ -293,7 +283,7 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
         <TabButton tab="logs" label="Admin Logs" />
       </div>
 
-      {/* --- Tab Content --- */}
+      {/* Users tab */}
       {activeTab === "users" && (
         <div>
           <input
@@ -305,7 +295,124 @@ export function AdminDashboard({ admin }: { admin: Admin }) {
             style={{ marginBottom: 8 }}
           />
           <div style={{ marginBottom: 8 }}>
-            <button onClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>
+            <button onClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>Bulk Block</button>
+            <button onClick={bulkUnblock} disabled={Object.keys(bulkSelection).length === 0}>Bulk Unblock</button>
+            <ExportCSV data={filteredUsers} filename="users_export.csv" />
+          </div>
+          {loadingUsers ? (
+            <div>Loading users...</div>
+          ) : (
+            <table style={{ width: "100%", marginTop: 8, background: "#fff" }}>
+              <thead>
+                <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      aria-label="Select all"
+                      checked={filteredUsers.every((u) => bulkSelection[u.id])}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const newSelection: Record<string, boolean> = {};
+                        filteredUsers.forEach((u) => (newSelection[u.id] = checked));
+                        setBulkSelection(newSelection);
+                      }}
+                    />
+                  </th>
+                  <th>Email</th>
+                  <th>Username</th>
+                  <th>Phone</th>
+                  <th>Role</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((u) => (
+                  <tr key={u.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={bulkSelection[u.id] || false}
+                        onChange={(e) =>
+                          setBulkSelection({ ...bulkSelection, [u.id]: e.target.checked })
+                        }
+                      />
+                    </td>
+                    <td>{u.email}</td>
+                    <td>{u.username}</td>
+                    <td>{u.phone}</td>
+                    <td>{u.role}{u.deleted ? " (deleted)" : ""}</td>
+                    <td>
+                      <button onClick={() => setSelectedUser(u)}>View</button>
+                      {u.role !== "blocked" ? (
+                        <button onClick={() => blockUser(u.id)}>Block</button>
+                      ) : (
+                        <button onClick={() => unblockUser(u.id)}>Unblock</button>
+                      )}
+                      {!u.deleted ? (
+                        <button onClick={() => deleteUser(u.id)}>Delete</button>
+                      ) : (
+                        <button onClick={() => restoreUser(u.id)}>Restore</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <UserModal />
+        </div>
+      )}
+
+      {/* Support tickets tab */}
+      {activeTab === "tickets" && <SupportTickets />}
+
+      {/* Analytics tab */}
+      {activeTab === "analytics" && <PurchaseAnalytics />}
+
+      {/* Announcements tab */}
+      {activeTab === "announcements" && (
+        <div>
+          <textarea
+            value={announcementMsg}
+            onChange={(e) => setAnnouncementMsg(e.target.value)}
+            placeholder="Write announcement..."
+            rows={3}
+          />
+          <button onClick={sendAnnouncement}>Send</button>
+          {loadingAnnouncements ? (
+            <div>Loading announcements...</div>
+          ) : (
+            <ul>
+              {announcements.map((a) => (
+                <li key={a.id}>
+                  {a.message} ({a.date})
+                  <button onClick={() => deleteAnnouncement(a.id)}>Delete</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Logs tab */}
+      {activeTab === "logs" && (
+        <div>
+          {loadingLogs ? (
+            <div>Loading logs...</div>
+          ) : (
+            <ul>
+              {logs.map((l) => (
+                <li key={l.id}>
+                  {l.date}: {l.action} → {l.target_id}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+                               }nClick={bulkBlock} disabled={Object.keys(bulkSelection).length === 0}>
               Bulk Block
             </button>
             <button onClick={bulkUnblock} disabled={Object.keys(bulkSelection).length === 0}>
