@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -12,29 +13,26 @@ export default function LoginForm() {
     setMessage("");
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await res.json();
-      setMessage(data.message);
+      if (error) throw error;
 
-      if (res.ok) {
-        // Redirect or store user session
-        console.log("Login successful!");
-      }
+      setMessage("Login successful!");
+      setEmail("");
+      setPassword("");
     } catch (err: any) {
-      setMessage(err.message || "Login failed");
+      setMessage(err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleLogin} style={{ maxWidth: 400, margin: "0 auto" }}>
-      <h2>Login</h2>
+    <form onSubmit={handleLogin}>
+      <h3>Login</h3>
       {message && <p>{message}</p>}
       <input
         type="email"
@@ -51,7 +49,7 @@ export default function LoginForm() {
         required
       />
       <button type="submit" disabled={loading}>
-        {loading ? "Logging in..." : "Login"}
+        {loading ? "Logging In..." : "Login"}
       </button>
     </form>
   );
