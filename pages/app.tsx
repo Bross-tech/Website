@@ -1,252 +1,203 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { PRICES } from "../lib/pricing";
+import { PRICES, UPGRADE_AGENT_FEE } from "../lib/pricing";
 import { UpgradeToAgent } from "../components/UpgradeToAgent";
 import { PaystackButton } from "../components/PaystackButton";
-import { AgentReferral } from "../components/AgentReferral";
 import { BulkBundlePurchase } from "../components/BulkBundlePurchase";
-import { AgentEarnings } from "../components/AgentEarnings";
-import { AgentAnnouncements } from "../components/AgentAnnouncements";
-import { AgentProfile } from "../components/AgentProfile";
-import { SupportTickets } from "../components/SupportTickets";
-import { PurchaseAnalytics } from "../components/PurchaseAnalytics";
-import { DarkModeToggle } from "../components/DarkModeToggle";
-import { ExportCSV } from "../components/ExportCSV";
-import { NotificationsCenter } from "../components/NotificationsCenter";
-import { PromoCodeRedeem } from "../components/PromoCodeRedeem";
-import { WhatsAppWidget } from "../components/WhatsAppWidget";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<string | null>("user");
+  const [role, setRole] = useState<"customer" | "agent">("customer");
   const [walletBalance, setWalletBalance] = useState(0);
-  const [purchases, setPurchases] = useState([]);
-  const [bundleLoading, setBundleLoading] = useState(false);
-  const [afaLoading, setAfaLoading] = useState(false);
-
-  // Deposit modal states
-  const [showDepositModal, setShowDepositModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [paystackEmail, setPaystackEmail] = useState("");
+  const [showDepositModal, setShowDepositModal] = useState(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
 
-  // Auth
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [signup, setSignup] = useState(false);
+  // Example network bundles
+  const mtnBundles = [
+    { network: "MTN", size: "1GB", price_customer: 5.2, price_agent: 5.2 },
+    { network: "MTN", size: "2GB", price_customer: 10.2, price_agent: 10.2 },
+    { network: "MTN", size: "3GB", price_customer: 15.2, price_agent: 15.2 },
+    { network: "MTN", size: "4GB", price_customer: 20.2, price_agent: 20.2 },
+    { network: "MTN", size: "5GB", price_customer: 24.8, price_agent: 24.8 },
+    { network: "MTN", size: "6GB", price_customer: 28.2, price_agent: 28.2 },
+    { network: "MTN", size: "7GB", price_customer: 33.2, price_agent: 33.2 },
+    { network: "MTN", size: "8GB", price_customer: 36.8, price_agent: 36.8 },
+    { network: "MTN", size: "10GB", price_customer: 43, price_agent: 43 },
+    { network: "MTN", size: "15GB", price_customer: 66, price_agent: 66 },
+    { network: "MTN", size: "20GB", price_customer: 84, price_agent: 84 },
+    { network: "MTN", size: "25GB", price_customer: 104, price_agent: 104 },
+    { network: "MTN", size: "30GB", price_customer: 124, price_agent: 124 },
+    { network: "MTN", size: "40GB", price_customer: 159, price_agent: 159 },
+    { network: "MTN", size: "50GB", price_customer: 200, price_agent: 200 },
+    { network: "MTN", size: "100GB", price_customer: 379, price_agent: 379 },
+  ];
 
-  // AFA form states
-  const [afaName, setAfaName] = useState("");
-  const [afaPhone, setAfaPhone] = useState("");
-  const [afaLocation, setAfaLocation] = useState("");
-  const [afaDob, setAfaDob] = useState("");
+  const telecelBundles = [
+    { network: "TELECEL", size: "5GB", price_customer: 24.7, price_agent: 24.7 },
+    { network: "TELECEL", size: "10GB", price_customer: 41, price_agent: 41 },
+    { network: "TELECEL", size: "15GB", price_customer: 59, price_agent: 59 },
+    { network: "TELECEL", size: "20GB", price_customer: 79, price_agent: 79 },
+    { network: "TELECEL", size: "25GB", price_customer: 98, price_agent: 98 },
+    { network: "TELECEL", size: "30GB", price_customer: 111, price_agent: 111 },
+    { network: "TELECEL", size: "40GB", price_customer: 145, price_agent: 145 },
+    { network: "TELECEL", size: "50GB", price_customer: 186, price_agent: 186 },
+    { network: "TELECEL", size: "100GB", price_customer: 354, price_agent: 354 },
+  ];
+
+  const tigoBundles = [
+    { network: "TIGO ISHARE", size: "1GB", price_customer: 4.8, price_agent: 4.8 },
+    { network: "TIGO ISHARE", size: "2GB", price_customer: 8.6, price_agent: 8.6 },
+    { network: "TIGO ISHARE", size: "3GB", price_customer: 12.4, price_agent: 12.4 },
+    { network: "TIGO ISHARE", size: "4GB", price_customer: 16.9, price_agent: 16.9 },
+    { network: "TIGO ISHARE", size: "5GB", price_customer: 21.5, price_agent: 21.5 },
+    { network: "TIGO ISHARE", size: "6GB", price_customer: 27.4, price_agent: 27.4 },
+    { network: "TIGO ISHARE", size: "7GB", price_customer: 28.4, price_agent: 28.4 },
+    { network: "TIGO ISHARE", size: "8GB", price_customer: 34.2, price_agent: 34.2 },
+    { network: "TIGO ISHARE", size: "9GB", price_customer: 37, price_agent: 37 },
+    { network: "TIGO ISHARE", size: "10GB", price_customer: 40.5, price_agent: 40.5 },
+  ];
+
+  const togoBundles = [
+    { network: "TOGO BIG-TIME", size: "15GB", price_customer: 56.3, price_agent: 56.3 },
+    { network: "TOGO BIG-TIME", size: "20GB", price_customer: 67, price_agent: 67 },
+    { network: "TOGO BIG-TIME", size: "25GB", price_customer: 72.2, price_agent: 72.2 },
+    { network: "TOGO BIG-TIME", size: "30GB", price_customer: 77.2, price_agent: 77.2 },
+    { network: "TOGO BIG-TIME", size: "40GB", price_customer: 87.2, price_agent: 87.2 },
+    { network: "TOGO BIG-TIME", size: "50GB", price_customer: 97, price_agent: 97 },
+    { network: "TOGO BIG-TIME", size: "60GB", price_customer: 137.2, price_agent: 137.2 },
+    { network: "TOGO BIG-TIME", size: "100GB", price_customer: 203.2, price_agent: 203.2 },
+    { network: "TOGO BIG-TIME", size: "200GB", price_customer: 375.2, price_agent: 375.2 },
+  ];
+
+  // Combine all bundles dynamically based on role
+  const allBundles = [
+    ...mtnBundles,
+    ...telecelBundles,
+    ...tigoBundles,
+    ...togoBundles,
+  ].map(b => ({
+    ...b,
+    price: role === "agent" ? b.price_agent : b.price_customer,
+  }));
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) setUser(data.user);
     });
+
+    if (amountInputRef.current) amountInputRef.current.focus();
   }, []);
 
-  useEffect(() => {
+  const handleUpgrade = async () => {
     if (!user) return;
-    Promise.all([
-      supabase.from("users").select("role").eq("id", user.id).single(),
-      supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
-      supabase.from("purchases").select("*").eq("user_id", user.id).order("date", { ascending: false }),
-    ]).then(([roleRes, walletRes, purchasesRes]) => {
-      setRole(roleRes.data?.role || "user");
-      setWalletBalance(walletRes.data?.balance ?? 0);
-      setPurchases(purchasesRes.data ?? []);
-    });
-  }, [user]);
-
-  useEffect(() => {
-    if (showDepositModal && amountInputRef.current) {
-      amountInputRef.current.focus();
-    }
-  }, [showDepositModal]);
-
-  const handleRoleChange = (newRole: string) => {
-    setRole(newRole);
-  };
-
-  const currentPrices = PRICES[role === "agent" ? "agent" : "customer"];
-
-  // Bundle purchase logic
-  const handleBundlePurchase = async (bundle: any) => {
-    if (!user) return;
-    if (walletBalance < bundle.price) {
-      alert("Insufficient balance.");
+    if (walletBalance < UPGRADE_AGENT_FEE) {
+      alert("Insufficient balance to upgrade.");
       return;
     }
-    setBundleLoading(true);
     await supabase.rpc("decrement_wallet_balance", {
       user_id_input: user.id,
-      amount_input: bundle.price,
+      amount_input: UPGRADE_AGENT_FEE,
     });
-    await supabase.from("purchases").insert([
-      {
-        network: "Bundle",
-        bundle: bundle.name,
-        price: bundle.price,
-        date: new Date().toISOString(),
-        user_id: user.id,
-      },
-    ]);
-    setWalletBalance((prev) => prev - bundle.price);
-    setBundleLoading(false);
-    alert("Bundle purchased!");
+    await supabase.from("users").update({ role: "agent" }).eq("id", user.id);
+    setRole("agent");
+    setWalletBalance(prev => prev - UPGRADE_AGENT_FEE);
+    alert("You are now an agent! Prices updated.");
   };
 
-  // AFA registration logic
-  const handleAfaRegister = async () => {
-    if (!user) return;
-
-    const price = role === "agent" ? 6 : 8;
-
-    if (walletBalance < price) {
-      alert("Insufficient balance.");
-      return;
-    }
-
-    if (!afaName || !afaPhone || !afaLocation || !afaDob) {
-      alert("Please fill out all fields.");
-      return;
-    }
-
-    setAfaLoading(true);
-
-    const { error: walletError } = await supabase.rpc("decrement_wallet_balance", {
-      user_id_input: user.id,
-      amount_input: price,
-    });
-
-    if (walletError) {
-      alert("Error deducting balance: " + walletError.message);
-      setAfaLoading(false);
-      return;
-    }
-
-    const { error: afaError } = await supabase.from("afa").insert([
-      {
-        name: afaName,
-        phone: afaPhone,
-        location: afaLocation,
-        dob: afaDob,
-        user_id: user.id,
-        role: role,
-        price_paid: price,
-      },
-    ]);
-
-    if (afaError) {
-      alert("Error registering AFA: " + afaError.message);
-      setAfaLoading(false);
-      return;
-    }
-
-    setWalletBalance((prev) => prev - price);
-    setAfaName("");
-    setAfaPhone("");
-    setAfaLocation("");
-    setAfaDob("");
-    setAfaLoading(false);
-    alert(`AFA Registered successfully! GHS ${price} deducted.`);
-  };
-
-  // Auth logic
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setLoading(true);
-
-    if (!email || !password) {
-      setErrorMsg("Email and password required.");
-      setLoading(false);
-      return;
-    }
-
-    if (signup) {
-      const { error, data } = await supabase.auth.signUp({ email, password });
-      if (error) setErrorMsg(error.message);
-      else setUser(data.user);
-    } else {
-      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setErrorMsg(error.message);
-      else setUser(data.user);
-    }
-    setLoading(false);
-  };
-
-  // Auth UI
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="p-8 bg-white rounded shadow w-80">
-          <h1 className="text-xl font-bold mb-4">{signup ? "Sign Up" : "Login"}</h1>
-          {errorMsg && <p className="text-red-500">{errorMsg}</p>}
-          <form onSubmit={handleAuth} className="mt-4 space-y-2">
-            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border p-2 rounded" required />
-            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border p-2 rounded" required />
-            <button type="submit" className="w-full bg-green-600 text-white p-2 rounded" disabled={loading}>
-              {loading ? "Processing..." : signup ? "Sign Up" : "Login"}
-            </button>
-          </form>
-          <button onClick={() => setSignup(!signup)} className="mt-4 text-blue-600 underline">
-            {signup ? "Have an account? Login" : "New user? Sign Up"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Dashboard UI
   return (
-    <div className="p-4 space-y-6 max-w-2xl mx-auto">
+    <div className="p-4 max-w-3xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold text-center">Dashboard</h1>
-      <DarkModeToggle />
-      <NotificationsCenter user={user} />
 
-      {/* Wallet */}
       <div className="bg-gray-100 p-4 rounded shadow flex justify-between items-center">
         <span>Balance: GHS {walletBalance.toFixed(2)}</span>
-        <button onClick={() => setShowDepositModal(true)} className="bg-green-600 text-white w-8 h-8 flex items-center justify-center rounded-full" title="Add Funds">+</button>
+        <button
+          onClick={() => setShowDepositModal(true)}
+          className="bg-green-600 text-white w-8 h-8 flex items-center justify-center rounded-full"
+        >
+          +
+        </button>
       </div>
 
-      {/* Deposit Modal */}
       <AnimatePresence>
         {showDepositModal && (
-          <motion.div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <motion.div className="bg-white p-6 rounded-2xl shadow-xl w-80 space-y-4 relative" initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-              <button onClick={() => setShowDepositModal(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl" aria-label="Close">&times;</button>
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white p-6 rounded-2xl shadow-xl w-80 space-y-4 relative"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+            >
+              <button
+                onClick={() => setShowDepositModal(false)}
+                className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl"
+              >
+                &times;
+              </button>
+
               <h3 className="text-lg font-bold">Deposit Funds</h3>
-              <input type="number" ref={amountInputRef} placeholder="Enter amount (GHS)" className="w-full border p-2 rounded" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} required />
-              <input type="email" placeholder="Enter your email" className="w-full border p-2 rounded" value={paystackEmail} onChange={(e) => setPaystackEmail(e.target.value)} required />
+
+              <input
+                ref={amountInputRef}
+                type="number"
+                placeholder="Enter amount (GHS)"
+                className="w-full border p-2 rounded"
+                value={depositAmount}
+                onChange={e => setDepositAmount(e.target.value)}
+              />
+              <input
+                type="email"
+                placeholder="Enter your email"
+                className="w-full border p-2 rounded"
+                value={paystackEmail}
+                onChange={e => setPaystackEmail(e.target.value)}
+              />
+
               <div className="flex justify-between space-x-2">
-                <button onClick={() => setShowDepositModal(false)} className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition">Cancel</button>
-                <PaystackButton userId={user.id} amount={Number(depositAmount)} email={paystackEmail} onSuccess={(newBalance: number) => {
-                  setWalletBalance((prev) => prev + newBalance);
-                  setDepositAmount("");
-                  setPaystackEmail("");
-                  setShowDepositModal(false);
-                  alert(`Deposited GHS ${newBalance} successfully!`);
-                }} />
+                <button
+                  onClick={() => setShowDepositModal(false)}
+                  className="px-4 py-2 bg-gray-400 text-white rounded"
+                >
+                  Cancel
+                </button>
+                <PaystackButton
+                  userId={user?.id}
+                  amount={Number(depositAmount)}
+                  email={paystackEmail}
+                  onSuccess={(newBalance: number) => {
+                    setWalletBalance(prev => prev + newBalance);
+                    setDepositAmount("");
+                    setPaystackEmail("");
+                    setShowDepositModal(false);
+                    alert(`Deposited GHS ${newBalance} successfully!`);
+                  }}
+                />
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {role !== "agent" && <UpgradeToAgent user={user} walletBalance={walletBalance} onRoleChange={handleRoleChange} />}
+      {role === "customer" && (
+        <UpgradeToAgent user={user} walletBalance={walletBalance} onUpgrade={handleUpgrade} />
+      )}
 
-      {/* Bundles */}
+      <BulkBundlePurchase agent={user} bundles={allBundles} walletBalance={walletBalance} />
+
       <div className="p-4 bg-gray-100 rounded shadow space-y-2">
-        <h2 className="font-bold">Bundles ({role === "agent" ? "Agent Prices" : "Customer Prices"})</h2>
-        {currentPrices.bundles.map((bundle: any, i: number) => (
-          <button key={i} onClick={() => handleBundlePurchase(bundle)} className="w-full bg-blue-500 text-white p-2 rounded mb-2" disabled={bundleLoading}>
+        <h2 className="font-bold">AFA Registration ({role === "agent" ? "Agent" : "Customer"} price: GHS {role === "agent" ? 6 : 8})</h2>
+        {/* Implement AFA form here */}
+      </div>
+    </div>
+  );
+     }ed={bundleLoading}>
             {bundle.name} - GHS {bundle.price}
           </button>
         ))}
