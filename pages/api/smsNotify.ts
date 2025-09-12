@@ -1,17 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import africastalking from "africastalking";
-import { supabase } from "../../lib/supabaseClient";
+import Africastalking from "africastalking";
 
-// Setup Africa's Talking
-const africasTalking = africastalking({
-  apiKey: process.env.AT_API_KEY as string, // put in .env.local
-  username: process.env.AT_USERNAME as string, // usually "sandbox" for testing
+// Initialize Africa's Talking
+const at = Africastalking({
+  apiKey: process.env.AFRICAS_TALKING_API_KEY,
+  username: process.env.AFRICAS_TALKING_USERNAME,
 });
 
-const sms = africasTalking.SMS;
-
-// Fixed admin number (can also load from env if you prefer)
-const ADMIN_PHONE = "+233556429525";
+const sms = at.SMS;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -19,41 +15,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const purchase = req.body;
+    const data = req.body;
 
-    if (!purchase || !purchase.id) {
-      return res.status(400).json({ error: "Missing purchase details" });
+    if (!data || !data.type) {
+      return res.status(400).json({ error: "Invalid payload" });
     }
 
-    // Craft message
-    const message = `📦 New purchase received!\n\nID: ${purchase.id}\nUser: ${purchase.user_id}\nAmount: ${purchase.amount}\nDate: ${new Date().toLocaleString()}`;
+    // --- Handle purchase notifications to admin ---
+    if (data.type === "purchase") {
+      const message = `New purchase: ${data.product_name || "Data/Service"} by ${data.user_email || "Unknown"}.\nAmount: ${data.amount || 0}.`;
 
-    // Send SMS via Africa's Talking
-    const response = await sms.send({
-      to: [ADMIN_PHONE],
-      message,
-    });
+      // Admin phone number (example: +233556429525)
+      await sms.send({
+        to: ["+233556429525"],
+        message,
+      });
 
-    // Log SMS in Supabase
-    await supabase.from("sms_logs").insert({
-      recipient: ADMIN_PHONE,
-      message,
-      status: "SENT",
-      error: null,
-    });
+      return res.status(200).json({ status: "Admin notified" });
+    }
 
-    res.status(200).json({ success: true, response });
+    // --- Handle deposit top-up notifications to user ---
+    if (data.type === "deposit") {
+      if (!data.user_phone || !data.amount) {
+        return res.status(400).json({ error: "Missing user phone or amount" });
+      }
+
+      const message = `Hi! Your wallet has been topped up with ${data.amount}. New balance: ${data.new_balance || "N/A"}.`;
+
+      await sms.send({
+        to: [data.user_phone],
+        message,
+      });
+
+      return res.status(200).json({ status: "User notified" });
+    }
+
+    return res.status(400).json({ error: "Unknown notification type" });
   } catch (error: any) {
-    console.error("SMS sending failed:", error);
-
-    // Log error in Supabase
-    await supabase.from("sms_logs").insert({
-      recipient: ADMIN_PHONE,
-      message: "Failed to send purchase notification",
-      status: "FAILED",
-      error: error.message,
-    });
-
-    res.status(500).json({ error: "Failed to send SMS" });
+    console.error("SMS notify error:", error);
+    return res.status(500).json({ error: error.message || "SMS failed" });
   }
 }
