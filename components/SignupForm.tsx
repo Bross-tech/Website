@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 export default function SignupForm() {
   const [email, setEmail] = useState("");
@@ -14,31 +15,36 @@ export default function SignupForm() {
     setMessage("");
 
     try {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, phone, password }),
+      // Create user in Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
       });
 
-      const data = await res.json();
-      setMessage(data.message);
+      if (error) throw error;
 
-      if (res.ok) {
-        setEmail("");
-        setUsername("");
-        setPhone("");
-        setPassword("");
-      }
+      // Insert additional info in "profiles" table
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert([{ id: data.user?.id, username, phone }]);
+
+      if (profileError) throw profileError;
+
+      setMessage("Signup successful! Please check your email to confirm.");
+      setEmail("");
+      setUsername("");
+      setPhone("");
+      setPassword("");
     } catch (err: any) {
-      setMessage(err.message || "Signup failed");
+      setMessage(err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSignup} style={{ maxWidth: 400, margin: "0 auto" }}>
-      <h2>Sign Up</h2>
+    <form onSubmit={handleSignup}>
+      <h3>Sign Up</h3>
       {message && <p>{message}</p>}
       <input
         type="email"
@@ -56,7 +62,7 @@ export default function SignupForm() {
       />
       <input
         type="tel"
-        placeholder="Phone number"
+        placeholder="Phone Number"
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
         required
@@ -69,7 +75,7 @@ export default function SignupForm() {
         required
       />
       <button type="submit" disabled={loading}>
-        {loading ? "Signing up..." : "Sign Up"}
+        {loading ? "Signing Up..." : "Sign Up"}
       </button>
     </form>
   );
