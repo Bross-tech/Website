@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabaseClient";
 
 export default function SignupForm() {
   const [email, setEmail] = useState("");
@@ -7,76 +6,36 @@ export default function SignupForm() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage("");
 
-    try {
-      // Create user in Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+    const res = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "signup", email, username, phone, password }),
+    });
 
-      if (error) throw error;
+    const data = await res.json();
+    setLoading(false);
 
-      // Insert additional info in "profiles" table
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert([{ id: data.user?.id, username, phone }]);
-
-      if (profileError) throw profileError;
-
-      setMessage("Signup successful! Please check your email to confirm.");
-      setEmail("");
-      setUsername("");
-      setPhone("");
-      setPassword("");
-    } catch (err: any) {
-      setMessage(err.message);
-    } finally {
-      setLoading(false);
+    if (res.ok) {
+      alert(data.message);
+      setEmail(""); setUsername(""); setPhone(""); setPassword("");
+    } else {
+      alert(data.error);
     }
   };
 
   return (
-    <form onSubmit={handleSignup}>
+    <form onSubmit={handleSubmit} style={{ border: "1px solid #ccc", padding: 20, borderRadius: 8 }}>
       <h3>Sign Up</h3>
-      {message && <p>{message}</p>}
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        required
-      />
-      <input
-        type="tel"
-        placeholder="Phone Number"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        required
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      <button type="submit" disabled={loading}>
-        {loading ? "Signing Up..." : "Sign Up"}
-      </button>
+      <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+      <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required />
+      <input type="text" placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} />
+      <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
+      <button type="submit" disabled={loading}>{loading ? "Signing up..." : "Sign Up"}</button>
     </form>
   );
 }
