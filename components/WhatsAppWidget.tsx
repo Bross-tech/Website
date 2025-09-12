@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import "./WhatsAppChatWidget.css"; // We'll put the CSS for typing bubble & animations here
 
 export const WhatsAppWidget = () => {
   const popupRef = useRef<HTMLDivElement>(null);
@@ -11,17 +12,15 @@ export const WhatsAppWidget = () => {
     const typingBubble = typingBubbleRef.current!;
     const notifBadge = notifBadgeRef.current!;
 
-    // Typing bubble animation
-    const typingInterval = setInterval(() => {
-      typingBubble.style.opacity = "1";
-      setTimeout(() => (typingBubble.style.opacity = "0"), 1500);
-    }, 4000);
+    // Typing bubble animation will run via CSS
+    typingBubble.style.display = "flex";
 
     // Auto-hide notification badge after 10 seconds
     const notifTimeout = setTimeout(() => {
       notifBadge.style.display = "none";
     }, 10000);
 
+    // Toggle popup
     window.togglePopup = () => {
       if (!isOpen) {
         popup.style.bottom = "80px";
@@ -32,18 +31,23 @@ export const WhatsAppWidget = () => {
         popup.style.bottom = "-400px";
         isOpen = false;
         document.getElementById("supportForm")!.style.display = "none";
+        typingBubble.style.display = "flex";
       }
     };
+
     window.openWhatsApp = (link: string) => {
       window.open(link, "_blank");
       window.togglePopup();
     };
+
     window.showSupportForm = () => {
       document.getElementById("supportForm")!.style.display = "block";
     };
+
     window.hideSupportForm = () => {
       document.getElementById("supportForm")!.style.display = "none";
     };
+
     window.sendSupportWhatsApp = () => {
       const recipientNumber = (document.getElementById("recipientNumber") as HTMLInputElement).value.trim();
       const network = (document.getElementById("network") as HTMLInputElement).value.trim();
@@ -67,21 +71,25 @@ Recipient Number: ${recipientNumber}
     };
 
     return () => {
-      clearInterval(typingInterval);
       clearTimeout(notifTimeout);
     };
   }, []);
 
   return (
     <>
-      <div className="typing-bubble" id="typingBubble" ref={typingBubbleRef}>
+      {/* Typing Bubble */}
+      <div className="typing-bubble" ref={typingBubbleRef}>
         <span></span><span></span><span></span>
       </div>
+
+      {/* Chat Widget Button */}
       <button className="chat-widget-btn" onClick={() => window.togglePopup()}>
         <i className="fab fa-whatsapp"></i>
-        <div className="notification-badge" id="notifBadge" ref={notifBadgeRef}>1</div>
+        <div className="notification-badge" ref={notifBadgeRef}>1</div>
       </button>
-      <div className="chat-popup" id="chatPopup" ref={popupRef}>
+
+      {/* Popup */}
+      <div className="chat-popup" ref={popupRef} style={{ bottom: "-400px" }}>
         <div className="chat-popup-header">
           Contact Us
           <i className="fas fa-times" onClick={() => window.togglePopup()}></i>
@@ -90,7 +98,7 @@ Recipient Number: ${recipientNumber}
           <button onClick={() =>
             window.openWhatsApp(
               "https://wa.me/233247918766?text=" +
-                encodeURIComponent("Hello! I want to chat with Admin.")
+              encodeURIComponent("Hello! I want to chat with Admin.")
             )
           }>
             <i className="fas fa-user-tie"></i> Admin
