@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../lib/supabaseClient";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs"; // <-- changed from 'bcrypt' to 'bcryptjs'
 
 // Hashing salt rounds
 const SALT_ROUNDS = 10;
@@ -33,13 +33,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
       // Insert new user
-      const { data, error } = await supabase.from("users").insert({
-        email,
-        username,
-        phone,
-        password: hashedPassword,
-        role: "user",
-      }).select().single();
+      const { data, error } = await supabase
+        .from("users")
+        .insert({
+          email,
+          username,
+          phone,
+          password: hashedPassword,
+          role: "user",
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
