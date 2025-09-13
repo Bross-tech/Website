@@ -1,3 +1,4 @@
+// pages/app.tsx
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { PRICES } from "../lib/pricing";
@@ -17,11 +18,10 @@ import { WhatsAppWidget } from "../components/WhatsAppChatWidget";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function App() {
-  // User & role state
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<"customer" | "agent">("customer");
   const [walletBalance, setWalletBalance] = useState(0);
-  const [purchases, setPurchases] = useState([]);
+  const [purchases, setPurchases] = useState<any[]>([]);
   const [bundleLoading, setBundleLoading] = useState(false);
   const [afaLoading, setAfaLoading] = useState(false);
 
@@ -31,21 +31,21 @@ export default function App() {
   const [paystackEmail, setPaystackEmail] = useState("");
   const amountInputRef = useRef<HTMLInputElement>(null);
 
-  // Auth states
+  // Auth
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [signup, setSignup] = useState(false);
 
-  // Fetch user from Supabase
+  // Fetch user on mount
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) setUser(data.user);
     });
   }, []);
 
-  // Fetch user data: role, wallet, purchases
+  // Fetch user data (role, balance, purchases)
   useEffect(() => {
     if (!user) return;
     Promise.all([
@@ -59,12 +59,16 @@ export default function App() {
     });
   }, [user]);
 
-  // Auto-focus deposit input
+  // Focus input when deposit modal opens
   useEffect(() => {
     if (showDepositModal && amountInputRef.current) {
       amountInputRef.current.focus();
     }
   }, [showDepositModal]);
+
+  const handleRoleChange = (newRole: "customer" | "agent") => {
+    setRole(newRole);
+  };
 
   const currentPrices = PRICES[role];
 
@@ -76,8 +80,17 @@ export default function App() {
       return;
     }
     setBundleLoading(true);
-    await supabase.rpc("decrement_wallet_balance", { user_id_input: user.id, amount_input: bundle.price });
-    await supabase.from("purchases").insert([{ network: "Bundle", bundle: bundle.name, price: bundle.price, date: new Date().toISOString(), user_id: user.id }]);
+    await supabase.rpc("decrement_wallet_balance", {
+      user_id_input: user.id,
+      amount_input: bundle.price,
+    });
+    await supabase.from("purchases").insert([{
+      network: "Bundle",
+      bundle: bundle.name,
+      price: bundle.price,
+      date: new Date().toISOString(),
+      user_id: user.id,
+    }]);
     setWalletBalance(prev => prev - bundle.price);
     setBundleLoading(false);
     alert("Bundle purchased!");
@@ -91,8 +104,16 @@ export default function App() {
       return;
     }
     setAfaLoading(true);
-    await supabase.rpc("decrement_wallet_balance", { user_id_input: user.id, amount_input: currentPrices.afa });
-    await supabase.from("afa").insert([{ name: "AFA Registration", phone: "000", email: user.email, dob: "2000-01-01" }]);
+    await supabase.rpc("decrement_wallet_balance", {
+      user_id_input: user.id,
+      amount_input: currentPrices.afa,
+    });
+    await supabase.from("afa").insert([{
+      name: "AFA Registration",
+      phone: "000",
+      email: user.email,
+      dob: "2000-01-01",
+    }]);
     setWalletBalance(prev => prev - currentPrices.afa);
     setAfaLoading(false);
     alert("AFA Registered!");
@@ -103,6 +124,7 @@ export default function App() {
     e.preventDefault();
     setErrorMsg(null);
     setLoading(true);
+
     if (!email || !password) {
       setErrorMsg("Email and password required.");
       setLoading(false);
@@ -121,6 +143,7 @@ export default function App() {
     setLoading(false);
   };
 
+  // Auth UI
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -130,86 +153,46 @@ export default function App() {
           <form onSubmit={handleAuth} className="mt-4 space-y-2">
             <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full border p-2 rounded" required />
             <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full border p-2 rounded" required />
-            <button type="submit" className="w-full bg-green-600 text-white p-2 rounded" disabled={loading}>{loading ? "Processing..." : signup ? "Sign Up" : "Login"}</button>
+            <button type="submit" className="w-full bg-green-600 text-white p-2 rounded" disabled={loading}>
+              {loading ? "Processing..." : signup ? "Sign Up" : "Login"}
+            </button>
           </form>
-          <button onClick={() => setSignup(!signup)} className="mt-4 text-blue-600 underline">{signup ? "Have an account? Login" : "New user? Sign Up"}</button>
+          <button onClick={() => setSignup(!signup)} className="mt-4 text-blue-600 underline">
+            {signup ? "Have an account? Login" : "New user? Sign Up"}
+          </button>
         </div>
       </div>
     );
   }
 
+  // Dashboard UI
   return (
     <div className="p-4 space-y-6 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-center">Dashboard</h1>
       <DarkModeToggle />
-      
-      {/* Wallet balance */}
+
+      {/* Wallet Balance */}
       <div className="bg-gray-100 p-4 rounded shadow flex justify-between items-center">
         <span>Balance: GHS {walletBalance.toFixed(2)}</span>
-        <button onClick={() => setShowDepositModal(true)} className="bg-green-600 text-white w-8 h-8 flex items-center justify-center rounded-full">+</button>
+        <button onClick={() => setShowDepositModal(true)} className="bg-green-600 text-white w-8 h-8 flex items-center justify-center rounded-full" title="Add Funds">+</button>
       </div>
 
-      {/* Deposit modal */}
+      {/* Deposit Modal */}
       <AnimatePresence>
         {showDepositModal && (
           <motion.div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div className="bg-white p-6 rounded-2xl shadow-xl w-80 space-y-4 relative" initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} transition={{ duration: 0.3, ease: "easeOut" }}>
               <button onClick={() => setShowDepositModal(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl">&times;</button>
               <h3 className="text-lg font-bold">Deposit Funds</h3>
-              <input type="number" ref={amountInputRef} placeholder="Enter amount (GHS)" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} className="w-full border p-2 rounded" required />
-              <input type="email" placeholder="Enter your email" value={paystackEmail} onChange={e => setPaystackEmail(e.target.value)} className="w-full border p-2 rounded" required />
+              <input type="number" ref={amountInputRef} placeholder="Enter amount (GHS)" className="w-full border p-2 rounded" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} required />
+              <input type="email" placeholder="Enter your email" className="w-full border p-2 rounded" value={paystackEmail} onChange={e => setPaystackEmail(e.target.value)} required />
               <div className="flex justify-between space-x-2">
-                <button onClick={() => setShowDepositModal(false)} className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition">
-import { useState, useEffect, useRef } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { PRICES } from "../lib/pricing";
-import { UpgradeToAgent } from "../components/UpgradeToAgent";
-import { PaystackButton } from "../components/PaystackButton";
-import { AgentReferral } from "../components/AgentReferral";
-import { BulkBundlePurchase } from "../components/BulkBundlePurchase";
-import { AgentEarnings } from "../components/AgentEarnings";
-import { AgentAnnouncements } from "../components/AgentAnnouncements";
-import { AgentProfile } from "../components/AgentProfile";
-import { SupportTickets } from "../components/SupportTickets";
-import { PurchaseAnalytics } from "../components/PurchaseAnalytics";
-import { DarkModeToggle } from "../components/DarkModeToggle";
-import { ExportCSV } from "../components/ExportCSV";
-import { PromoCodeRedeem } from "../components/PromoCodeRedeem";
-import { WhatsAppWidget } from "../components/WhatsAppChatWidget";
-import { motion, AnimatePresence } from "framer-motion";
-
-export default function App() {
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<"customer" | "agent">("customer");
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [purchases, setPurchases] = useState([]);
-  const [bundleLoading, setBundleLoading] = useState(false);
-  const [afaLoading, setAfaLoading] = useState(false);
-
-  // Deposit modal states
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const [depositAmount, setDepositAmount] = useState("");
-  const [paystackEmail, setPaystackEmail] = useState("");
-  const amountInputRef = useRef<HTMLInputElement>(null);
-
-  // Auth
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [signup, setSignup] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setUser(data.user);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    Promise.all([
-      supabase.from("users").select("role").eq("id", user.id).single(),
-      supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
+                <button onClick={() => setShowDepositModal(false)} className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Cancel</button>
+                <PaystackButton userId={user.id} amount={Number(depositAmount)} email={paystackEmail} onSuccess={(newBalance: number) => {
+                  setWalletBalance(prev => prev + newBalance);
+                  setDepositAmount("");
+                  setPaystackEmail("");
+                  setShowDepositModal(false("balance").eq("user_id", user.id).single(),
       supabase.from("purchases").select("*").eq("user_id", user.id).order("date", { ascending: false }),
     ]).then(([roleRes, walletRes, purchasesRes]) => {
       setRole((roleRes.data?.role as "customer" | "agent") || "customer");
