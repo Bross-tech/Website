@@ -312,6 +312,51 @@ export default function App() {
       </button>
     </div>
   );
+      }ed={bundleLoading}>
+            {bundle.name} - GHS {bundle.price}
+          </button>
+        ))}
+      </div>
+
+      {/* Agent-only components */}
+      {role === "agent" && (
+        <>
+          <AgentReferral agent={user} />
+          <BulkBundlePurchase agent={user} walletBalance={walletBalance} bundlePrice={currentPrices.bundles[0].price} />
+          <AgentEarnings agent={user} />
+          <AgentAnnouncements agent={user} />
+          <AgentProfile agent={user} />
+        </>
+      )}
+
+      {/* Purchase History */}
+      <div className="p-4 bg-gray-100 rounded shadow">
+        <h2 className="font-bold mb-2">Purchase History</h2>
+        <ExportCSV data={purchases} filename="purchases.csv" />
+        <ul>
+          {purchases.map((p: any) => (
+            <li key={p.id}>
+              {p.network} - {p.bundle} - GHS {p.price.toFixed(2)} - {new Date(p.date).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <PurchaseAnalytics user={user} />
+      <SupportTickets user={user} />
+      <PromoCodeRedeem user={user} />
+      <WhatsAppWidget />
+
+      {/* AFA Registration */}
+      <button
+        onClick={handleAfaRegister}
+        className="w-full bg-purple-600 text-white p-2 rounded mb-2"
+        disabled={afaLoading}
+      >
+        Register AFA (Price: GHS {currentPrices.afa})
+      </button>
+    </div>
+  );
                           }ed={bundleLoading}>
             {bundle.name} - GHS {bundle.price}
           </button>
