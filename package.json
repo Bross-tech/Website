@@ -10,12 +10,12 @@
     "postinstall": "echo 'Dependencies installed successfully!'"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "africastalking": "^0.7.6",
+    "axios": "^1.6.3",
     "next": "15.5.2",
     "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "@supabase/supabase-js": "^2.35.0",
-    "africastalking": "^0.7.6",
-    "bcryptjs": "^2.4.3"
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
