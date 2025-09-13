@@ -1,8 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../lib/supabaseClient";
-import bcrypt from "bcryptjs"; // <-- changed from 'bcrypt' to 'bcryptjs'
+import bcrypt from "bcryptjs"; // <-- changed from 'bcrypt'
 
-// Hashing salt rounds
 const SALT_ROUNDS = 10;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -18,7 +17,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     if (type === "signup") {
-      // Check if user already exists
       const { data: existingUser } = await supabase
         .from("users")
         .select("*")
@@ -29,21 +27,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "User already exists" });
       }
 
-      // Hash password
       const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-      // Insert new user
-      const { data, error } = await supabase
-        .from("users")
-        .insert({
-          email,
-          username,
-          phone,
-          password: hashedPassword,
-          role: "user",
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.from("users").insert({
+        email,
+        username,
+        phone,
+        password: hashedPassword,
+        role: "user",
+      }).select().single();
 
       if (error) throw error;
 
@@ -51,7 +43,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (type === "login") {
-      // Find user by email
       const { data: user } = await supabase
         .from("users")
         .select("*")
@@ -62,7 +53,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "User not found" });
       }
 
-      // Check password
       const match = await bcrypt.compare(password, user.password);
       if (!match) {
         return res.status(401).json({ error: "Invalid credentials" });
