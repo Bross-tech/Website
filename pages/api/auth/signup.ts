@@ -1,53 +1,40 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import bcrypt from "bcryptjs";
-import { supabase } from "../../../lib/supabaseClient";
+import { createClient } from "@supabase/supabase-js";
 
-type ResponseData = { message: string };
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+  process.env.SUPABASE_SERVICE_ROLE_KEY as string
+);
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<ResponseData>
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
-
-  const { email, username, phone, password } = req.body;
-
-  if (!email || !username || !phone || !password) {
-    return res.status(400).json({ message: "All fields are required" });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // Check if user already exists
-    const { data: existingUser } = await supabase
-      .from("users")
-      .select("*")
-      .eq("email", email)
-      .single();
+    const { email, password } = req.body;
 
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already in use" });
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert new user
-    const { error } = await supabase.from("users").insert([
-      {
-        email,
-        username,
-        phone,
-        password: hashedPassword,
-        role: "user",
-      },
-    ]);
+    // Save user in Supabase
+    const { data, error } = await supabase
+      .from("users")
+      .insert([{ email, password: hashedPassword }])
+      .select();
 
     if (error) throw error;
 
-    return res.status(200).json({ message: "Account created successfully" });
+    // Do not return password in response
+    const { password: _, ...userWithoutPassword } = data[0];
+
+    return res.status(201).json({ user: userWithoutPassword });
   } catch (err: any) {
-    return res.status(500).json({ message: err.message || "Signup failed" });
+    return res.status(500).json({ error: err.message });
   }
 }
