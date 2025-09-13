@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../lib/supabaseClient";
-import bcrypt from "bcryptjs"; // <-- changed from 'bcrypt'
+import bcrypt from "bcryptjs"; // <-- using bcryptjs
 
 const SALT_ROUNDS = 10;
 
