@@ -25,7 +25,7 @@ export default function App() {
   const [bundleLoading, setBundleLoading] = useState(false);
   const [afaLoading, setAfaLoading] = useState(false);
 
-  // Deposit modal states
+  // Deposit modal
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [paystackEmail, setPaystackEmail] = useState("");
@@ -45,40 +45,38 @@ export default function App() {
     });
   }, []);
 
-  // Fetch user data (role, balance, purchases)
+  // Fetch user data
   useEffect(() => {
     if (!user) return;
-    Promise.all([
-      supabase.from("users").select("role").eq("id", user.id).single(),
-      supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
-      supabase.from("purchases").select("*").eq("user_id", user.id).order("date", { ascending: false }),
-    ]).then(([roleRes, walletRes, purchasesRes]) => {
+    const fetchUserData = async () => {
+      const [roleRes, walletRes, purchasesRes] = await Promise.all([
+        supabase.from("users").select("role").eq("id", user.id).single(),
+        supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
+        supabase.from("purchases").select("*").eq("user_id", user.id).order("date", { ascending: false }),
+      ]);
       setRole((roleRes.data?.role as "customer" | "agent") || "customer");
       setWalletBalance(walletRes.data?.balance ?? 0);
       setPurchases(purchasesRes.data ?? []);
-    });
+    };
+    fetchUserData();
   }, [user]);
 
-  // Focus input when deposit modal opens
+  // Focus deposit input
   useEffect(() => {
     if (showDepositModal && amountInputRef.current) {
       amountInputRef.current.focus();
     }
   }, [showDepositModal]);
 
-  const handleRoleChange = (newRole: "customer" | "agent") => {
-    setRole(newRole);
-  };
+  const handleRoleChange = (newRole: "customer" | "agent") => setRole(newRole);
 
   const currentPrices = PRICES[role];
 
-  // Bundle purchase logic
+  // Bundle purchase
   const handleBundlePurchase = async (bundle: any) => {
     if (!user) return;
-    if (walletBalance < bundle.price) {
-      alert("Insufficient balance.");
-      return;
-    }
+    if (walletBalance < bundle.price) return alert("Insufficient balance.");
+
     setBundleLoading(true);
     await supabase.rpc("decrement_wallet_balance", {
       user_id_input: user.id,
@@ -96,13 +94,11 @@ export default function App() {
     alert("Bundle purchased!");
   };
 
-  // AFA registration logic
+  // AFA registration
   const handleAfaRegister = async () => {
     if (!user) return;
-    if (walletBalance < currentPrices.afa) {
-      alert("Insufficient balance.");
-      return;
-    }
+    if (walletBalance < currentPrices.afa) return alert("Insufficient balance.");
+
     setAfaLoading(true);
     await supabase.rpc("decrement_wallet_balance", {
       user_id_input: user.id,
@@ -119,7 +115,7 @@ export default function App() {
     alert("AFA Registered!");
   };
 
-  // Auth logic
+  // Auth handler
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -184,70 +180,86 @@ export default function App() {
             <motion.div className="bg-white p-6 rounded-2xl shadow-xl w-80 space-y-4 relative" initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} transition={{ duration: 0.3, ease: "easeOut" }}>
               <button onClick={() => setShowDepositModal(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl">&times;</button>
               <h3 className="text-lg font-bold">Deposit Funds</h3>
-              <input type="number" ref={amountInputRef} placeholder="Enter amount (GHS)" className="w-full border p-2 rounded" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} required />
-              <input type="email" placeholder="Enter your email" className="w-full border p-2 rounded" value={paystackEmail} onChange={e => setPaystackEmail(e.target.value)} required />
+              <input type="number" ref={amountInputRef} placeholder="Enter amount (GHS)" className="w-full border p-2 rounded" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} required />
+              <input type="email" placeholder="Enter your email" className="w-full border p-2 rounded" value={paystackEmail} onChange={(e) => setPaystackEmail(e.target.value)} required />
               <div className="flex justify-between space-x-2">
-                <button onClick={() => setShowDepositModal(false)} className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Cancel</button>
-                <PaystackButton userId={user.id} amount={Number(depositAmount)} email={paystackEmail} onSuccess={(newBalance: number) => {
-                  setWalletBalance(prev => prev + newBalance);
-                  setDepositAmount("");
-                  setPaystackEmail("");
-                  setShowDepositModal(false("balance").eq("user_id", user.id).single(),
-      supabase.from("purchases").select("*").eq("user_id", user.id).order("date", { ascending: false }),
-    ]).then(([roleRes, walletRes, purchasesRes]) => {
-      setRole((roleRes.data?.role as "customer" | "agent") || "customer");
-      setWalletBalance(walletRes.data?.balance ?? 0);
-      setPurchases(purchasesRes.data ?? []);
-    });
-  }, [user]);
+                <button onClick={() => setShowDepositModal(false)} className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition">Cancel</button>
+                <PaystackButton
+                  userId={user.id}
+                  amount={Number(depositAmount)}
+                  email={paystackEmail}
+                  onSuccess={async (newBalance: number) => {
+                    setWalletBalance(prev => prev + newBalance);
+                    setDepositAmount("");
+                    setPaystackEmail("");
+                    setShowDepositModal(false);
 
-  useEffect(() => {
-    if (showDepositModal && amountInputRef.current) {
-      amountInputRef.current.focus();
-    }
-  }, [showDepositModal]);
+                    try {
+                      const [roleRes, walletRes, purchasesRes] = await Promise.all([
+                        supabase.from("users").select("role").eq("id", user.id).single(),
+                        supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
+                        supabase.from("purchases").select("*").eq("user_id", user.id).order("date", { ascending: false }),
+                      ]);
+                      setRole((roleRes.data?.role as "customer" | "agent") || "customer");
+                      setWalletBalance(walletRes.data?.balance ?? 0);
+                      setPurchases(purchasesRes.data ?? []);
+                    } catch (err) {
+                      console.error("Failed to refresh user data:", err);
+                    }
 
-  const handleRoleChange = (newRole: "customer" | "agent") => {
-    setRole(newRole);
-  };
+                    alert(`Deposited GHS ${newBalance} successfully!`);
+                  }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-  const currentPrices = PRICES[role];
+      {/* Upgrade to Agent */}
+      {role !== "agent" && <UpgradeToAgent user={user} walletBalance={walletBalance} onRoleChange={handleRoleChange} />}
 
-  // Bundle purchase logic
-  const handleBundlePurchase = async (bundle: any) => {
-    if (!user) return;
-    if (walletBalance < bundle.price) {
-      alert("Insufficient balance.");
-      return;
-    }
-    setBundleLoading(true);
-    await supabase.rpc("decrement_wallet_balance", {
-      user_id_input: user.id,
-      amount_input: bundle.price,
-    });
-    await supabase.from("purchases").insert([
-      {
-        network: "Bundle",
-        bundle: bundle.name,
-        price: bundle.price,
-        date: new Date().toISOString(),
-        user_id: user.id,
-      },
-    ]);
-    setWalletBalance(prev => prev - bundle.price);
-    setBundleLoading(false);
-    alert("Bundle purchased!");
-  };
+      {/* Bundles */}
+      <div className="p-4 bg-gray-100 rounded shadow space-y-2">
+        <h2 className="font-bold">Bundles ({role === "agent" ? "Agent Prices" : "Customer Prices"})</h2>
+        {currentPrices.bundles.map((bundle) => (
+          <button key={bundle.name} onClick={() => handleBundlePurchase(bundle)} className="w-full bg-blue-500 text-white p-2 rounded mb-2" disabled={bundleLoading}>
+            {bundle.name} - GHS {bundle.price}
+          </button>
+        ))}
+      </div>
 
-  // AFA registration logic
-  const handleAfaRegister = async () => {
-    if (!user) return;
-    if (walletBalance < currentPrices.afa) {
-      alert("Insufficient balance.");
-      return;
-    }
-    setAfaLoading(true);
-    await supabase.rpc("decrement_wallet_balance", {
+      {/* Agent-only components */}
+      {role === "agent" && (
+        <>
+          <AgentReferral agent={user} />
+          <BulkBundlePurchase agent={user} walletBalance={walletBalance} bundlePrice={currentPrices.bundles[0].price} />
+          <AgentEarnings agent={user} />
+          <AgentAnnouncements agent={user} />
+          <AgentProfile agent={user} />
+        </>
+      )}
+
+      {/* Purchase History */}
+      <div className="p-4 bg-gray-100 rounded shadow">
+        <h2 className="font-bold mb-2">Purchase History</h2>
+        <ExportCSV data={purchases} filename="purchases.csv" />
+        <ul>
+          {purchases.map((p: any) => (
+            <li key={p.id}>
+              {p.network} - {p.bundle} - GHS {p.price.toFixed(2)} - {new Date(p.date).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <PurchaseAnalytics user={user} />
+      <SupportTickets user={user} />
+      <PromoCodeRedeem user={user} />
+      <WhatsAppWidget />
+
+      {/* AFA Registration */}
+      <button onClick={handleAfaRegister} className="w-full bg-purple-600 text-white prpc("decrement_wallet_balance", {
       user_id_input: user.id,
       amount_input: currentPrices.afa,
     });
