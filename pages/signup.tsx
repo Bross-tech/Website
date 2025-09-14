@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/router";   // ✅ use next/router, not next/navigation
 import { supabase } from "../lib/supabaseClient";
 
 export default function Signup() {
