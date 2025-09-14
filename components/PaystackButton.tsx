@@ -1,10 +1,10 @@
 import React from "react";
 
 interface PaystackButtonProps {
-  userId: number;
+  userId: string;
   amount: number;
   email: string;
-  onSuccess: (amount: number) => void;
+  onSuccess: (newBalance: number) => void;
 }
 
 export const PaystackButton: React.FC<PaystackButtonProps> = ({
@@ -18,7 +18,7 @@ export const PaystackButton: React.FC<PaystackButtonProps> = ({
       const handler = (window as any).PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
         email,
-        amount: amount * 100, // Paystack expects in kobo
+        amount: amount * 100, // Paystack expects kobo (GHS * 100)
         callback: async function (response: any) {
           const res = await fetch("/api/verifyPayment", {
             method: "POST",
@@ -31,8 +31,10 @@ export const PaystackButton: React.FC<PaystackButtonProps> = ({
           });
 
           const data = await res.json();
+
           if (data.success) {
-            onSuccess(amount);
+            // ✅ Use balance returned from backend
+            onSuccess(data.newBalance);
           } else {
             alert("Payment verification failed!");
           }
