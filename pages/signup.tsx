@@ -1,4 +1,4 @@
-"use client"; // if using Next.js App Router, remove if on Pages Router
+"use client"; // keep if using App Router; remove if using Pages Router
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,9 +13,11 @@ export default function Signup() {
   const router = useRouter();
 
   useEffect(() => {
-    const ref = searchParams.get("ref");
-    if (ref) {
-      setReferrerId(ref);
+    if (searchParams) {
+      const ref = searchParams.get("ref");
+      if (ref) {
+        setReferrerId(ref);
+      }
     }
   }, [searchParams]);
 
