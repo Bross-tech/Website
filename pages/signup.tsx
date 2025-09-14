@@ -1,4 +1,4 @@
-"use client"; // keep if using App Router; remove if using Pages Router
+"use client"; // remove if using Pages Router
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,7 +24,6 @@ export default function Signup() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Create user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -36,7 +35,6 @@ export default function Signup() {
     }
 
     if (authData.user) {
-      // Insert into users table with referrer
       const { error: dbError } = await supabase.from("users").insert([
         {
           id: authData.user.id,
