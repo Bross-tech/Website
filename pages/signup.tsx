@@ -1,7 +1,5 @@
-"use client"; // remove if using Pages Router
-
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
 
 export default function Signup() {
@@ -9,17 +7,13 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [referrerId, setReferrerId] = useState<string | null>(null);
 
-  const searchParams = useSearchParams();
   const router = useRouter();
 
   useEffect(() => {
-    if (searchParams) {
-      const ref = searchParams.get("ref");
-      if (ref) {
-        setReferrerId(ref);
-      }
+    if (router.query.ref && typeof router.query.ref === "string") {
+      setReferrerId(router.query.ref);
     }
-  }, [searchParams]);
+  }, [router.query.ref]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
