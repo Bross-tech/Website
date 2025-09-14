@@ -1,76 +1,68 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { supabase } from "../../lib/supabaseClient";
+import React from "react";
 
-type VerifyRequestBody = {
-  reference: string;
+interface PaystackButtonProps {
   userId: string;
   amount: number;
-};
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ success: false, message: "Method not allowed" });
-  }
-
-  if (!process.env.PAYSTACK_SECRET_KEY) {
-    return res.status(500).json({ success: false, message: "Server misconfigured: missing PAYSTACK_SECRET_KEY" });
-  }
-
-  const { reference, userId, amount } = req.body as VerifyRequestBody;
-
-  if (!reference || !userId || !amount) {
-    return res.status(400).json({ success: false, message: "Missing required fields" });
-  }
-
-  try {
-    // ✅ Verify with Paystack
-    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-      headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    const verifyData = await verifyRes.json();
-
-    if (!verifyData.status) {
-      return res.status(400).json({ success: false, message: verifyData.message || "Paystack verification failed" });
-    }
-
-    if (verifyData.data.status !== "success") {
-      return res.status(400).json({ success: false, message: "Payment not successful" });
-    }
-
-    // ✅ Payment verified, now update wallet
-    const { error: rpcError } = await supabase.rpc("increment_wallet_balance", {
-      user_id_input: userId,
-      amount_input: amount,
-    });
-
-    if (rpcError) {
-      console.error("Wallet update error:", rpcError.message);
-      return res.status(500).json({ success: false, message: "Failed to update wallet" });
-    }
-
-    // ✅ Fetch updated balance
-    const { data: walletData, error: walletError } = await supabase
-      .from("wallets")
-      .select("balance")
-      .eq("user_id", userId)
-      .single();
-
-    if (walletError) {
-      console.error("Wallet fetch error:", walletError.message);
-      return res.status(500).json({ success: false, message: "Wallet updated but failed to fetch balance" });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Wallet updated",
-      balance: walletData.balance,
-    });
-  } catch (err: any) {
-    console.error("Verify payment error:", err.message);
-    return res.status(500).json({ success: false, message: "Internal server error" });
-  }
+  email: string;
+  onSuccess: (newBalance: number) => void; // ✅ Now expects updated balance
 }
+
+export const PaystackButton: React.FC<PaystackButtonProps> = ({
+  userId,
+  amount,
+  email,
+  onSuccess,
+}) => {
+  const handlePayment = async () => {
+    try {
+      const handler = (window as any).PaystackPop.setup({
+        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
+        email,
+        amount: amount * 100, // Paystack expects kobo (smallest unit)
+        callback: async function (response: any) {
+          try {
+            const res = await fetch("/api/verifyPayment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                reference: response.reference,
+                userId,
+                amount,
+              }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+              // ✅ Use updated balance returned from backend
+              onSuccess(data.balance);
+              alert(`Payment successful! New balance: GHS ${data.balance}`);
+            } else {
+              alert(data.message || "Payment verification failed!");
+            }
+          } catch (err) {
+            console.error("Verification error:", err);
+            alert("Error verifying payment. Please try again.");
+          }
+        },
+        onClose: function () {
+          alert("Payment cancelled.");
+        },
+      });
+
+      handler.openIframe();
+    } catch (err) {
+      console.error("Payment error:", err);
+      alert("Something went wrong. Try again.");
+    }
+  };
+
+  return (
+    <button
+      onClick={handlePayment}
+      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition w-full"
+    >
+      Deposit GHS {amount}
+    </button>
+  );
+};
