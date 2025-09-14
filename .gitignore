@@ -1,5 +1,3 @@
-cd ~/my-nextjs-app
-cat > .gitignore << 'EOF'
 # Node.js
 node_modules/
 npm-debug.log*
@@ -30,9 +28,12 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
+<<<<<<< HEAD
 EOF
 
 # Add and commit
 git add .gitignore
 git commit -m "Chore: add .gitignore for Next.js project"
 git push
+=======
+>>>>>>> 50ce57d (Chore: add .gitignore for Next.js project)
