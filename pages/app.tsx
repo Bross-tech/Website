@@ -51,7 +51,10 @@ export default function App() {
       const [roleRes, walletRes, purchasesRes] = await Promise.all([
         supabase.from("users").select("role").eq("id", user.id).single(),
         supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
-        supabase.from("purchases").select("*").eq("user_id", user.id).order("date", { ascending: false }),
+        supabase.from("purchases")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("date", { ascending: false }),
       ]);
       setRole((roleRes.data?.role as "customer" | "agent") || "customer");
       setWalletBalance(walletRes.data?.balance ?? 0);
@@ -81,14 +84,16 @@ export default function App() {
       user_id_input: user.id,
       amount_input: bundle.price,
     });
-    await supabase.from("purchases").insert([{
-      network: "Bundle",
-      bundle: bundle.name,
-      price: bundle.price,
-      date: new Date().toISOString(),
-      user_id: user.id,
-    }]);
-    setWalletBalance(prev => prev - bundle.price);
+    await supabase.from("purchases").insert([
+      {
+        network: "Bundle",
+        bundle: bundle.name,
+        price: bundle.price,
+        date: new Date().toISOString(),
+        user_id: user.id,
+      },
+    ]);
+    setWalletBalance((prev) => prev - bundle.price);
     setBundleLoading(false);
     alert("Bundle purchased!");
   };
@@ -96,20 +101,23 @@ export default function App() {
   // AFA registration
   const handleAfaRegister = async () => {
     if (!user) return;
-    if (walletBalance < currentPrices.afa) return alert("Insufficient balance.");
+    if (walletBalance < currentPrices.afa)
+      return alert("Insufficient balance.");
 
     setAfaLoading(true);
     await supabase.rpc("decrement_wallet_balance", {
       user_id_input: user.id,
       amount_input: currentPrices.afa,
     });
-    await supabase.from("afa").insert([{
-      name: "AFA Registration",
-      phone: "000",
-      email: user.email,
-      dob: "2000-01-01",
-    }]);
-    setWalletBalance(prev => prev - currentPrices.afa);
+    await supabase.from("afa").insert([
+      {
+        name: "AFA Registration",
+        phone: "000",
+        email: user.email,
+        dob: "2000-01-01",
+      },
+    ]);
+    setWalletBalance((prev) => prev - currentPrices.afa);
     setAfaLoading(false);
     alert("AFA Registered!");
   };
@@ -131,7 +139,10 @@ export default function App() {
       if (error) setErrorMsg(error.message);
       else setUser(data.user);
     } else {
-      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+      const { error, data } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (error) setErrorMsg(error.message);
       else setUser(data.user);
     }
@@ -143,16 +154,39 @@ export default function App() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="p-8 bg-white rounded shadow w-80">
-          <h1 className="text-xl font-bold mb-4">{signup ? "Sign Up" : "Login"}</h1>
+          <h1 className="text-xl font-bold mb-4">
+            {signup ? "Sign Up" : "Login"}
+          </h1>
           {errorMsg && <p className="text-red-500">{errorMsg}</p>}
           <form onSubmit={handleAuth} className="mt-4 space-y-2">
-            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full border p-2 rounded" required />
-            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full border p-2 rounded" required />
-            <button type="submit" className="w-full bg-green-600 text-white p-2 rounded" disabled={loading}>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border p-2 rounded"
+              required
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border p-2 rounded"
+              required
+            />
+            <button
+              type="submit"
+              className="w-full bg-green-600 text-white p-2 rounded"
+              disabled={loading}
+            >
               {loading ? "Processing..." : signup ? "Sign Up" : "Login"}
             </button>
           </form>
-          <button onClick={() => setSignup(!signup)} className="mt-4 text-blue-600 underline">
+          <button
+            onClick={() => setSignup(!signup)}
+            className="mt-4 text-blue-600 underline"
+          >
             {signup ? "Have an account? Login" : "New user? Sign Up"}
           </button>
         </div>
@@ -169,27 +203,68 @@ export default function App() {
       {/* Wallet Balance */}
       <div className="bg-gray-100 p-4 rounded shadow flex justify-between items-center">
         <span>Balance: GHS {walletBalance.toFixed(2)}</span>
-        <button onClick={() => setShowDepositModal(true)} className="bg-green-600 text-white w-8 h-8 flex items-center justify-center rounded-full" title="Add Funds">+</button>
+        <button
+          onClick={() => setShowDepositModal(true)}
+          className="bg-green-600 text-white w-8 h-8 flex items-center justify-center rounded-full"
+          title="Add Funds"
+        >
+          +
+        </button>
       </div>
 
       {/* Deposit Modal */}
       <AnimatePresence>
         {showDepositModal && (
-          <motion.div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <motion.div className="bg-white p-6 rounded-2xl shadow-xl w-80 space-y-4 relative" initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-              <button onClick={() => setShowDepositModal(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl">&times;</button>
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white p-6 rounded-2xl shadow-xl w-80 space-y-4 relative"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <button
+                onClick={() => setShowDepositModal(false)}
+                className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl"
+              >
+                &times;
+              </button>
               <h3 className="text-lg font-bold">Deposit Funds</h3>
-              <input type="number" ref={amountInputRef} placeholder="Enter amount (GHS)" className="w-full border p-2 rounded" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} required />
-              <input type="email" placeholder="Enter your email" className="w-full border p-2 rounded" value={paystackEmail} onChange={(e) => setPaystackEmail(e.target.value)} required />
+              <input
+                type="number"
+                ref={amountInputRef}
+                placeholder="Enter amount (GHS)"
+                className="w-full border p-2 rounded"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                required
+              />
+              <input
+                type="email"
+                placeholder="Enter your email"
+                className="w-full border p-2 rounded"
+                value={paystackEmail}
+                onChange={(e) => setPaystackEmail(e.target.value)}
+                required
+              />
               <div className="flex justify-between space-x-2">
-                <button onClick={() => setShowDepositModal(false)} className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition">Cancel</button>
+                <button
+                  onClick={() => setShowDepositModal(false)}
+                  className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition"
+                >
+                  Cancel
+                </button>
                 <PaystackButton
                   userId={user.id}
                   amount={Number(depositAmount)}
                   email={paystackEmail}
                   onSuccess={async (newBalance: number) => {
-                    // ✅ Use updated balance from backend
-                    setWalletBalance(newBalance);
+                    setWalletBalance((prev) => prev + newBalance);
                     setDepositAmount("");
                     setPaystackEmail("");
                     setShowDepositModal(false);
@@ -201,13 +276,13 @@ export default function App() {
                         supabase.from("purchases").select("*").eq("user_id", user.id).order("date", { ascending: false }),
                       ]);
                       setRole((roleRes.data?.role as "customer" | "agent") || "customer");
-                      setWalletBalance(walletRes.data?.balance ?? newBalance);
+                      setWalletBalance(walletRes.data?.balance ?? 0);
                       setPurchases(purchasesRes.data ?? []);
                     } catch (err) {
                       console.error("Failed to refresh user data:", err);
                     }
 
-                    alert(`Deposited successfully! New balance: GHS ${newBalance}`);
+                    alert(`Deposited GHS ${newBalance} successfully!`);
                   }}
                 />
               </div>
@@ -217,13 +292,76 @@ export default function App() {
       </AnimatePresence>
 
       {/* Upgrade to Agent */}
-      {role !== "agent" && <UpgradeToAgent user={user} walletBalance={walletBalance} onRoleChange={handleRoleChange} />}
+      {role !== "agent" && (
+        <UpgradeToAgent
+          user={user}
+          walletBalance={walletBalance}
+          onRoleChange={handleRoleChange}
+        />
+      )}
 
       {/* Bundles */}
       <div className="p-4 bg-gray-100 rounded shadow space-y-2">
-        <h2 className="font-bold">Bundles ({role === "agent" ? "Agent Prices" : "Customer Prices"})</h2>
+        <h2 className="font-bold">
+          Bundles ({role === "agent" ? "Agent Prices" : "Customer Prices"})
+        </h2>
         {currentPrices.bundles.map((bundle) => (
-          <button key={bundle.name} onClick={() => handleBundlePurchase(bundle)} className="w-full bg-blue-500 text-white p-2 rounded mb-2" disabled={bundleLoading}>
+          <button
+            key={bundle.name}
+            onClick={() => handleBundlePurchase(bundle)}
+            className="w-full bg-blue-500 text-white p-2 rounded mb-2"
+            disabled={bundleLoading}
+          >
+            {bundle.name} - GHS {bundle.price}
+          </button>
+        ))}
+      </div>
+
+      {/* Agent-only components */}
+      {role === "agent" && (
+        <>
+          <AgentReferral agent={user} />
+          <BulkBundlePurchase
+            agent={user}
+            walletBalance={walletBalance}
+            bundlePrice={currentPrices.bundles[0].price}
+          />
+          <AgentEarnings agent={user} />
+          <AgentAnnouncements agent={user} />
+          <AgentProfile agent={user} />
+        </>
+      )}
+
+      {/* Purchase History */}
+      <div className="p-4 bg-gray-100 rounded shadow">
+        <h2 className="font-bold mb-2">Purchase History</h2>
+        <ExportCSV data={purchases} filename="purchases.csv" />
+        <ul>
+          {purchases.map((p: any) => (
+            <li key={p.id}>
+              {p.network} - {p.bundle} - GHS {p.price.toFixed(2)} -{" "}
+              {new Date(p.date).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <PurchaseAnalytics user={user} />
+      <SupportTickets user={user} />
+      <PromoCodeRedeem user={user} />
+      <WhatsAppWidget />
+
+      {/* AFA Registration */}
+      <button
+        onClick={handleAfaRegister}
+        className="w-full bg-purple-600 text-white p-2 rounded mb-2"
+        disabled={afaLoading}
+      >
+        Register AFA (Price: GHS {currentPrices.afa})
+      </button>
+    </div>
+  );
+                       }className="w-full bg-blue-500 text-white p-2 rounded mb-2" disabled={bundleLoading}>
             {bundle.name} - GHS {bundle.price}
           </button>
         ))}
