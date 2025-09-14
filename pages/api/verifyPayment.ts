@@ -1,68 +1,45 @@
-import React from "react";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { supabase } from "../../lib/supabaseClient";
 
-interface PaystackButtonProps {
-  userId: string;
-  amount: number;
-  email: string;
-  onSuccess: (newBalance: number) => void; // ✅ Now expects updated balance
-}
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ success: false, message: "Method not allowed" });
+  }
 
-export const PaystackButton: React.FC<PaystackButtonProps> = ({
-  userId,
-  amount,
-  email,
-  onSuccess,
-}) => {
-  const handlePayment = async () => {
-    try {
-      const handler = (window as any).PaystackPop.setup({
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
-        email,
-        amount: amount * 100, // Paystack expects kobo (smallest unit)
-        callback: async function (response: any) {
-          try {
-            const res = await fetch("/api/verifyPayment", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                reference: response.reference,
-                userId,
-                amount,
-              }),
-            });
+  const { reference, userId, amount } = req.body;
 
-            const data = await res.json();
+  if (!reference || !userId || !amount) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
 
-            if (res.ok && data.success) {
-              // ✅ Use updated balance returned from backend
-              onSuccess(data.balance);
-              alert(`Payment successful! New balance: GHS ${data.balance}`);
-            } else {
-              alert(data.message || "Payment verification failed!");
-            }
-          } catch (err) {
-            console.error("Verification error:", err);
-            alert("Error verifying payment. Please try again.");
-          }
-        },
-        onClose: function () {
-          alert("Payment cancelled.");
-        },
+  try {
+    // ✅ Verify with Paystack
+    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      },
+    });
+
+    const verifyData = await verifyRes.json();
+
+    if (verifyData.status && verifyData.data.status === "success") {
+      // ✅ Payment verified, now update wallet
+      const { error } = await supabase.rpc("increment_wallet_balance", {
+        user_id_input: userId,
+        amount_input: amount,
       });
 
-      handler.openIframe();
-    } catch (err) {
-      console.error("Payment error:", err);
-      alert("Something went wrong. Try again.");
-    }
-  };
+      if (error) {
+        console.error("Wallet update error:", error.message);
+        return res.status(500).json({ success: false, message: "Failed to update wallet" });
+      }
 
-  return (
-    <button
-      onClick={handlePayment}
-      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition w-full"
-    >
-      Deposit GHS {amount}
-    </button>
-  );
-};
+      return res.status(200).json({ success: true, message: "Wallet updated" });
+    } else {
+      return res.status(400).json({ success: false, message: "Payment verification failed" });
+    }
+  } catch (err: any) {
+    console.error("Verify payment error:", err.message);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+}
