@@ -1,20 +1,24 @@
+// pages/api/verifyPayment.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 
-// Example payment verification handler
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "POST") {
-    const { reference } = req.body;
+    try {
+      const { reference } = req.body;
 
-    // TODO: Call Paystack/Flutterwave API here to verify payment
-    // Example response (mock):
-    const paymentStatus = {
-      success: true,
-      reference,
-      message: "Payment verified successfully",
-    };
+      // Example verification logic (replace with Paystack or your logic)
+      if (!reference) {
+        return res.status(400).json({ success: false, message: "Reference required" });
+      }
 
-    return res.status(200).json(paymentStatus);
+      // Call Paystack API or database here...
+
+      return res.status(200).json({ success: true, message: "Payment verified" });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: "Error verifying payment" });
+    }
+  } else {
+    res.setHeader("Allow", ["POST"]);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-
-  return res.status(405).json({ error: "Method not allowed" });
 }
