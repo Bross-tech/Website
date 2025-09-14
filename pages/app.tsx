@@ -51,7 +51,8 @@ export default function App() {
       const [roleRes, walletRes, purchasesRes] = await Promise.all([
         supabase.from("users").select("role").eq("id", user.id).single(),
         supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
-        supabase.from("purchases")
+        supabase
+          .from("purchases")
           .select("*")
           .eq("user_id", user.id)
           .order("date", { ascending: false }),
@@ -101,8 +102,7 @@ export default function App() {
   // AFA registration
   const handleAfaRegister = async () => {
     if (!user) return;
-    if (walletBalance < currentPrices.afa)
-      return alert("Insufficient balance.");
+    if (walletBalance < currentPrices.afa) return alert("Insufficient balance.");
 
     setAfaLoading(true);
     await supabase.rpc("decrement_wallet_balance", {
@@ -276,6 +276,178 @@ export default function App() {
                         supabase.from("purchases").select("*").eq("user_id", user.id).order("date", { ascending: false }),
                       ]);
                       setRole((roleRes.data?.role as "customer" | "agent") || "customer");
+                      setWalletBalance(walletRes.data?.balance ?? 0);
+                      setPurchases(purchasesRes.data ?? []);
+                    } catch (err) {
+                      console.error("Failed to refresh user data:", err);
+                    }
+
+                    alert(`Deposited GHS ${newBalance} successfully!`);
+                  }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Upgrade to Agent */}
+      {role !== "agent" && (
+        <UpgradeToAgent
+          user={user}
+          walletBalance={walletBalance}
+          onRoleChange={handleRoleChange}
+        />
+      )}
+
+      {/* Bundles */}
+      <div className="p-4 bg-gray-100 rounded shadow space-y-2">
+        <h2 className="font-bold">
+          Bundles ({role === "agent" ? "Agent Prices" : "Customer Prices"})
+        </h2>
+        {currentPrices.bundles.map((bundle) => (
+          <button
+            key={bundle.name}
+            onClick={() => handleBundlePurchase(bundle)}
+            className="w-full bg-blue-500 text-white p-2 rounded mb-2"
+            disabled={bundleLoading}
+          >
+            {bundle.name} - GHS {bundle.price}
+          </button>
+        ))}
+      </div>
+
+      {/* Agent-only components */}
+      {role === "agent" && (
+        <>
+          <AgentReferral agent={user} />
+          <BulkBundlePurchase
+            agent={user}
+            walletBalance={walletBalance}
+            bundlePrice={currentPrices.bundles[0].price}
+          />
+          <AgentEarnings agent={user} />
+          <AgentAnnouncements agent={user} />
+          <AgentProfile agent={user} />
+        </>
+      )}
+
+      {/* Purchase History */}
+      <div className="p-4 bg-gray-100 rounded shadow">
+        <h2 className="font-bold mb-2">Purchase History</h2>
+        <ExportCSV data={purchases} filename="purchases.csv" />
+        <ul>
+          {purchases.map((p: any) => (
+            <li key={p.id}>
+              {p.network} - {p.bundle} - GHS {p.price.toFixed(2)} -{" "}
+              {new Date(p.date).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <PurchaseAnalytics user={user} />
+      <SupportTickets user={user} />
+      <PromoCodeRedeem user={user} />
+      <WhatsAppWidget />
+
+      {/* AFA Registration */}
+      <button
+        onClick={handleAfaRegister}
+        className="w-full bg-purple-600 text-white p-2 rounded mb-2"
+        disabled={afaLoading}
+      >
+        Register AFA (Price: GHS {currentPrices.afa})
+      </button>
+    </div>
+  );
+      }customer");
+                      setWalletBalance(walletRes.data?.balance ?? 0);
+                      setPurchases(purchasesRes.data ?? []);
+                    } catch (err) {
+                      console.error("Failed to refresh user data:", err);
+                    }
+
+                    alert(`Deposited GHS ${newBalance} successfully!`);
+                  }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Upgrade to Agent */}
+      {role !== "agent" && (
+        <UpgradeToAgent
+          user={user}
+          walletBalance={walletBalance}
+          onRoleChange={handleRoleChange}
+        />
+      )}
+
+      {/* Bundles */}
+      <div className="p-4 bg-gray-100 rounded shadow space-y-2">
+        <h2 className="font-bold">
+          Bundles ({role === "agent" ? "Agent Prices" : "Customer Prices"})
+        </h2>
+        {currentPrices.bundles.map((bundle) => (
+          <button
+            key={bundle.name}
+            onClick={() => handleBundlePurchase(bundle)}
+            className="w-full bg-blue-500 text-white p-2 rounded mb-2"
+            disabled={bundleLoading}
+          >
+            {bundle.name} - GHS {bundle.price}
+          </button>
+        ))}
+      </div>
+
+      {/* Agent-only components */}
+      {role === "agent" && (
+        <>
+          <AgentReferral agent={user} />
+          <BulkBundlePurchase
+            agent={user}
+            walletBalance={walletBalance}
+            bundlePrice={currentPrices.bundles[0].price}
+          />
+          <AgentEarnings agent={user} />
+          <AgentAnnouncements agent={user} />
+          <AgentProfile agent={user} />
+        </>
+      )}
+
+      {/* Purchase History */}
+      <div className="p-4 bg-gray-100 rounded shadow">
+        <h2 className="font-bold mb-2">Purchase History</h2>
+        <ExportCSV data={purchases} filename="purchases.csv" />
+        <ul>
+          {purchases.map((p: any) => (
+            <li key={p.id}>
+              {p.network} - {p.bundle} - GHS {p.price.toFixed(2)} -{" "}
+              {new Date(p.date).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <PurchaseAnalytics user={user} />
+      <SupportTickets user={user} />
+      <PromoCodeRedeem user={user} />
+      <WhatsAppWidget />
+
+      {/* AFA Registration */}
+      <button
+        onClick={handleAfaRegister}
+        className="w-full bg-purple-600 text-white p-2 rounded mb-2"
+        disabled={afaLoading}
+      >
+        Register AFA (Price: GHS {currentPrices.afa})
+      </button>
+    </div>
+  );
+            }mer");
                       setWalletBalance(walletRes.data?.balance ?? 0);
                       setPurchases(purchasesRes.data ?? []);
                     } catch (err) {
