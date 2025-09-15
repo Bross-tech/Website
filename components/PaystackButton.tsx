@@ -1,5 +1,6 @@
 // components/PaystackButton.tsx
 import React from "react";
+<<<<<<< HEAD
 
 type PaymentButtonProps = {
   amount: number;
@@ -16,3 +17,7 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({ amount, onPay }) =
     </button>
   );
 };
+=======
+const PaystackButton = () => <button>Pay with Paystack</button>;
+export { PaystackButton };
+>>>>>>> c81c701 (Fix Supabase user type issues, cleanup lockfiles, successful build)

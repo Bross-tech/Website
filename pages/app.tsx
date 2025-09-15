@@ -1,49 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { PRICES } from "../lib/pricing";
-import { UpgradeToAgent } from "../components/UpgradeToAgent";
-import { PaystackButton } from "../components/PaystackButton";
-import { AgentReferral } from "../components/AgentReferral";
-import { BulkBundlePurchase } from "../components/BulkBundlePurchase";
-import { AgentEarnings } from "../components/AgentEarnings";
-import { AgentAnnouncements } from "../components/AgentAnnouncements";
-import { AgentProfile } from "../components/AgentProfile";
-import { SupportTickets } from "../components/SupportTickets";
+import AdminDashboard from "../components/AdminDashboard";
 import { PurchaseAnalytics } from "../components/PurchaseAnalytics";
-import { DarkModeToggle } from "../components/DarkModeToggle";
-import { ExportCSV } from "../components/ExportCSV";
-import { PromoCodeRedeem } from "../components/PromoCodeRedeem";
-import { WhatsAppWidget } from "../components/WhatsAppChatWidget";
-import { motion, AnimatePresence } from "framer-motion";
 
-export default function App() {
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<"customer" | "agent">("customer");
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [purchases, setPurchases] = useState<any[]>([]);
-  const [bundleLoading, setBundleLoading] = useState(false);
-  const [afaLoading, setAfaLoading] = useState(false);
+export default function AppPage() {
+  const [user, setUser] = useState<SupabaseUser | null>(null);
 
-  // Deposit modal
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const [depositAmount, setDepositAmount] = useState("");
-  const [paystackEmail, setPaystackEmail] = useState("");
-  const amountInputRef = useRef<HTMLInputElement>(null);
-
-  // Auth
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [signup, setSignup] = useState(false);
-
-  // Fetch user on mount
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setUser(data.user);
+      setUser(data.user);
     });
   }, []);
 
+<<<<<<< HEAD
   // Fetch user data
   useEffect(() => {
     if (!user) return;
@@ -265,6 +235,12 @@ export default function App() {
       >
         Register AFA (Price: GHS {currentPrices.afa})
       </button>
+=======
+  return (
+    <div>
+      {user && <AdminDashboard user={user} />}
+      {user && <PurchaseAnalytics user={user} />}
+>>>>>>> c81c701 (Fix Supabase user type issues, cleanup lockfiles, successful build)
     </div>
   );
     }
