@@ -1,23 +1,40 @@
 // components/PaystackButton.tsx
 import React from "react";
-<<<<<<< HEAD
+import { PaystackButton } from "react-paystack";
 
 type PaymentButtonProps = {
-  amount: number;
-  onPay: () => void;
+  amount: number; // amount in GHS
+  email: string;
+  reference?: string;
+  onSuccess: (reference: any) => void;
+  onClose?: () => void;
 };
 
-export const PaymentButton: React.FC<PaymentButtonProps> = ({ amount, onPay }) => {
-  return (
-    <button
-      onClick={onPay}
-      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition w-full"
-    >
-      Deposit GHS {amount}
-    </button>
-  );
+const PaystackPaymentButton: React.FC<PaymentButtonProps> = ({
+  amount,
+  email,
+  reference,
+  onSuccess,
+  onClose,
+}) => {
+  const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
+
+  const config = {
+    reference: reference || new Date().getTime().toString(),
+    email,
+    amount: amount * 100, // convert GHS → pesewas
+    publicKey,
+    currency: "GHS",
+  };
+
+  const componentProps = {
+    ...config,
+    text: "Pay Now",
+    onSuccess,
+    onClose,
+  };
+
+  return <PaystackButton {...componentProps} />;
 };
-=======
-const PaystackButton = () => <button>Pay with Paystack</button>;
-export { PaystackButton };
->>>>>>> c81c701 (Fix Supabase user type issues, cleanup lockfiles, successful build)
+
+export default PaystackPaymentButton;
