@@ -6,35 +6,72 @@ import { PurchaseAnalytics } from "../components/PurchaseAnalytics";
 
 export default function AppPage() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // First effect: check auth user
+  // Check auth status on mount
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
       setUser(data.user);
-    });
-  }, []);
-
-  // Second effect: fetch user-related data if logged in
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchUserData = async () => {
-      const [roleRes, walletRes, purchasesRes] = await Promise.all([
-        supabase.from("users").select("role").eq("id", user.id).single(),
-        supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
-        supabase.from("purchases").select("*").eq("user_id", user.id),
-      ]);
-
-      console.log({ roleRes, walletRes, purchasesRes });
+      setLoading(false);
     };
 
-    fetchUserData();
-  }, [user]);
+    getUser();
 
+    // Listen for login/logout changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return <p>Loading...</p>;
+  }
+
+  if (!user) {
+    return (
+      <div style={{ textAlign: "center", padding: "50px" }}>
+        <h2>Welcome to DATA STORE 4GH ⚡</h2>
+        <p>Please log in to access your dashboard.</p>
+        <button
+          onClick={async () => {
+            const { error } = await supabase.auth.signInWithOtp({
+              email: prompt("Enter your email to log in") || "",
+            });
+            if (error) alert(error.message);
+            else alert("Check your email for a login link!");
+          }}
+          style={{
+            background: "#2563eb",
+            color: "white",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Log In
+        </button>
+      </div>
+    );
+  }
+
+  // If logged in → show dashboard
   return (
     <div>
-      {user && <AdminDashboard user={user} />}
-      {user && <PurchaseAnalytics user={user} />}
+      <AdminDashboard user={user} />
+      <PurchaseAnalytics user={user} />
     </div>
   );
+}
+
+// Ensure page is dynamic (important for Vercel + Supabase)
+export async function getServerSideProps() {
+  return { props: {} };
 }
