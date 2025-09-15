@@ -37,3 +37,4 @@ git commit -m "Chore: add .gitignore for Next.js project"
 git push
 =======
 >>>>>>> 50ce57d (Chore: add .gitignore for Next.js project)
+.vercel
