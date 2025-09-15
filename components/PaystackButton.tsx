@@ -1,4 +1,4 @@
-// components/PaymentButton.tsx
+// components/PaystackButton.tsx
 import React from "react";
 
 type PaymentButtonProps = {
