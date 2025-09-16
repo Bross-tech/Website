@@ -1,77 +1,63 @@
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+/**
+ * pages/app.tsx
+ * Auth-aware landing page: shows login prompt if not logged in,
+ * or appropriate dashboard if logged in (admin / user).
+ */
+import type { User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import AdminDashboard from "../components/AdminDashboard";
-import { PurchaseAnalytics } from "../components/PurchaseAnalytics";
+import dynamic from "next/dynamic";
+
+const UserDashboard = dynamic(() => import("./UserDashboard"), { ssr: false });
 
 export default function AppPage() {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check auth status on mount
   useEffect(() => {
-    const getUser = async () => {
+    (async () => {
       const { data } = await supabase.auth.getUser();
-      setUser(data.user);
-      setLoading(false);
-    };
+      setUser(data.user ?? null);
 
-    getUser();
-
-    // Listen for login/logout changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
+      if (data.user) {
+        const { data: prof } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
+        setRole(prof?.role ?? "user");
       }
-    );
+      setLoading(false);
+    })();
 
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        const { data: prof } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
+        setRole(prof?.role ?? "user");
+      } else setRole(null);
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
 
-  if (loading) {
-    return <p>Loading...</p>;
-  }
+  if (loading) return <p>Loading…</p>;
 
   if (!user) {
     return (
-      <div style={{ textAlign: "center", padding: "50px" }}>
-        <h2>Welcome to DATA STORE 4GH ⚡</h2>
-        <p>Please log in to access your dashboard.</p>
-        <button
-          onClick={async () => {
-            const { error } = await supabase.auth.signInWithOtp({
-              email: prompt("Enter your email to log in") || "",
-            });
-            if (error) alert(error.message);
-            else alert("Check your email for a login link!");
-          }}
-          style={{
-            background: "#2563eb",
-            color: "white",
-            padding: "10px 20px",
-            borderRadius: "8px",
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          Log In
-        </button>
+      <div style={{ textAlign: "center", padding: 40 }}>
+        <h1>Welcome to DATA STORE 4GH ⚡</h1>
+        <p>Please log in or sign up to continue.</p>
+        <div style={{ marginTop: 16 }}>
+          <a href="/login">Log in</a> · <a href="/signup">Sign up</a>
+        </div>
       </div>
     );
   }
 
-  // If logged in → show dashboard
-  return (
-    <div>
-      <AdminDashboard user={user} />
-      <PurchaseAnalytics user={user} />
-    </div>
-  );
+  // Render dashboard based on role
+  if (role === "admin") return <AdminDashboard user={user} />;
+  return <UserDashboard />;
 }
 
-// Ensure page is dynamic (important for Vercel + Supabase)
+// ensure dynamic server rendering behaviour
 export async function getServerSideProps() {
   return { props: {} };
 }

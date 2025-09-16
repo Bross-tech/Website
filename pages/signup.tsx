@@ -1,81 +1,53 @@
-import { useState, useEffect } from "react";
-import { useRouter } from "next/router";   // ✅ use next/router, not next/navigation
+/**
+ * pages/signup.tsx
+ * Sign up with email + password + username + phone (creates profiles row).
+ */
+import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useRouter } from "next/router";
 
-export default function Signup() {
+export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [referrerId, setReferrerId] = useState<string | null>(null);
-
+  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    if (router.query.ref && typeof router.query.ref === "string") {
-      setReferrerId(router.query.ref);
-    }
-  }, [router.query.ref]);
-
-  const handleSignup = async (e: React.FormEvent) => {
+  async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
+    setLoading(true);
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (authError) {
-      alert(authError.message);
-      return;
+    // create auth user
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      setLoading(false);
+      return alert(error.message);
     }
 
-    if (authData.user) {
-      const { error: dbError } = await supabase.from("users").insert([
-        {
-          id: authData.user.id,
-          email,
-          referrer_id: referrerId,
-        },
-      ]);
-
-      if (dbError) {
-        console.error("DB insert error:", dbError.message);
-      }
-
-      router.push("/dashboard");
+    // create profile row using anon client; if you require service_role usage, do it server-side.
+    // We assume RLS allows insert on profiles for auth.uid() via Supabase auth trigger.
+    // If profile row must be inserted now, use supabase.from('profiles').insert(...)
+    const userId = data.user?.id;
+    if (userId) {
+      await supabase.from("profiles").upsert({ id: userId, email, username, phone, role: "user" });
     }
-  };
+
+    setLoading(false);
+    alert("Signup success. Check your email for confirmation if required.");
+    router.push("/login");
+  }
 
   return (
-    <form
-      onSubmit={handleSignup}
-      className="max-w-sm mx-auto p-6 border rounded-lg shadow bg-white dark:bg-gray-800"
-    >
-      <h2 className="text-xl font-bold mb-4">Sign Up</h2>
-
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full px-3 py-2 mb-3 border rounded"
-        required
-      />
-
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="w-full px-3 py-2 mb-3 border rounded"
-        required
-      />
-
-      <button
-        type="submit"
-        className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-      >
-        Sign Up
-      </button>
-    </form>
+    <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
+      <h2>Create account</h2>
+      <form onSubmit={handleSignup} style={{ display: "grid", gap: 8 }}>
+        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <input placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
+        <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+        <input placeholder="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <button type="submit" disabled={loading}>{loading ? "Creating…" : "Create account"}</button>
+      </form>
+    </div>
   );
-}0
+}
