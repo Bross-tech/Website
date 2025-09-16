@@ -1,115 +1,118 @@
-/**
- * components/AdminDashboard.tsx
- * A self-contained admin panel component.
- * Expects a `user` prop with { id, email } (from Supabase).
- *
- * Features:
- *  - List profiles (id, email, username, role, phone)
- *  - Block / Unblock user (role update)
- *  - Announcements CRUD (admin only)
- *  - Basic UI; extend as needed
- */
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-type Profile = {
-  id: string;
-  email?: string;
-  username?: string;
-  role?: string;
-  phone?: string;
-};
+interface AdminDashboardProps {
+  user: { id: string; email?: string; role?: string };
+}
 
-export default function AdminDashboard({ user }: { user: any }) {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+export default function AdminDashboard({ user }: AdminDashboardProps) {
+  const [users, setUsers] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [msg, setMsg] = useState("");
+  const [announcementMsg, setAnnouncementMsg] = useState("");
+  const [approvals, setApprovals] = useState<any[]>([]);
+  const [files, setFiles] = useState<any[]>([]);
 
+  // Fetch users + announcements + approvals + files
   useEffect(() => {
+    const fetchData = async () => {
+      const { data: usersData } = await supabase.from("profiles").select("id, email, role");
+      setUsers(usersData || []);
+
+      const { data: annData } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("date", { ascending: false });
+      setAnnouncements(annData || []);
+
+      const { data: approvalsData } = await supabase.from("approvals").select("*");
+      setApprovals(approvalsData || []);
+
+      const { data: filesData } = await supabase.from("files").select("*");
+      setFiles(filesData || []);
+    };
+
     fetchData();
   }, []);
 
-  async function fetchData() {
-    // profiles
-    const { data: profilesData, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, email, username, role, phone")
-      .order("created_at", { ascending: false });
+  // Update user role
+  const updateUserRole = async (id: string, role: string) => {
+    await supabase.from("profiles").update({ role }).eq("id", id);
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
+  };
 
-    if (profilesError) console.error("profiles:", profilesError);
-    else setProfiles(profilesData ?? []);
-
-    // announcements
-    const { data: annData, error: annError } = await supabase
+  // Send announcement
+  const sendAnnouncement = async () => {
+    if (!announcementMsg.trim()) return;
+    const { data } = await supabase
       .from("announcements")
-      .select("*")
-      .order("date", { ascending: false });
-
-    if (annError) console.error("ann:", annError);
-    else setAnnouncements(annData ?? []);
-  }
-
-  async function updateRole(id: string, newRole: string) {
-    const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", id);
-    if (error) return alert("Failed to update role: " + error.message);
-    setProfiles((p) => p.map((x) => (x.id === id ? { ...x, role: newRole } : x)));
-  }
-
-  async function sendAnnouncement() {
-    if (!msg.trim()) return;
-    const { data, error } = await supabase
-      .from("announcements")
-      .insert([{ admin_id: user.id, message: msg, date: new Date().toISOString() }])
+      .insert([{ admin_id: user.id, message: announcementMsg, date: new Date().toISOString() }])
       .select()
       .single();
-    if (error) return alert("Announcement failed: " + error.message);
-    setAnnouncements((s) => [data, ...s]);
-    setMsg("");
-  }
+
+    if (data) setAnnouncements((prev) => [data, ...prev]);
+    setAnnouncementMsg("");
+  };
 
   return (
-    <section style={{ padding: 16 }}>
-      <h2>Admin Dashboard</h2>
+    <div style={{ padding: "20px" }}>
+      <h2>⚡ Admin Dashboard</h2>
 
-      <section style={{ marginTop: 16 }}>
-        <h3>Manage Users</h3>
+      {/* Users */}
+      <div style={{ marginTop: "20px" }}>
+        <h3>👥 Manage Users</h3>
         <ul>
-          {profiles.map((p) => (
-            <li key={p.id} style={{ marginBottom: 8 }}>
-              <strong>{p.email ?? p.username ?? p.id}</strong> — {p.role ?? "user"}{" "}
-              {p.role !== "blocked" ? (
-                <button onClick={() => updateRole(p.id, "blocked")} style={{ marginLeft: 8 }}>
-                  Block
-                </button>
+          {users.map((u) => (
+            <li key={u.id}>
+              {u.email} ({u.role})
+              {u.role === "blocked" ? (
+                <button onClick={() => updateUserRole(u.id, "user")}>Unblock</button>
               ) : (
-                <button onClick={() => updateRole(p.id, "user")} style={{ marginLeft: 8 }}>
-                  Unblock
-                </button>
+                <button onClick={() => updateUserRole(u.id, "blocked")}>Block</button>
               )}
             </li>
           ))}
         </ul>
-      </section>
+      </div>
 
-      <section style={{ marginTop: 24 }}>
-        <h3>Announcements</h3>
+      {/* Announcements */}
+      <div style={{ marginTop: "20px" }}>
+        <h3>📢 Announcements</h3>
         <textarea
-          placeholder="Write announcement..."
-          value={msg}
-          onChange={(e) => setMsg(e.target.value)}
-          style={{ width: "100%", minHeight: 80 }}
+          value={announcementMsg}
+          onChange={(e) => setAnnouncementMsg(e.target.value)}
+          placeholder="Type a message..."
+          style={{ width: "100%", minHeight: "80px", marginBottom: "10px" }}
         />
-        <div style={{ marginTop: 8 }}>
-          <button onClick={sendAnnouncement}>Send</button>
-        </div>
-        <ul style={{ marginTop: 12 }}>
+        <br />
+        <button onClick={sendAnnouncement}>Send Announcement</button>
+        <ul>
           {announcements.map((a) => (
             <li key={a.id}>
               <strong>{new Date(a.date).toLocaleString()}:</strong> {a.message}
             </li>
           ))}
         </ul>
-      </section>
-    </section>
+      </div>
+
+      {/* Approvals */}
+      <div style={{ marginTop: "20px" }}>
+        <h3>✅ Approvals</h3>
+        <ul>
+          {approvals.map((ap) => (
+            <li key={ap.id}>{ap.description || "Approval item"}</li>
+          ))}
+        </ul>
+      </div>
+
+      {/* File Manager */}
+      <div style={{ marginTop: "20px" }}>
+        <h3>📂 File Manager</h3>
+        <ul>
+          {files.map((f) => (
+            <li key={f.id}>{f.filename}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
