@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
+import AuthLayout from "@/components/AuthLayout";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -11,18 +12,15 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // sign up
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return alert(error.message);
 
-    // create profile
-    // NOTE: supabase auth will later call server trigger — but we upsert profile here safely
     const userId = data.user?.id;
     if (userId) {
-      await supabase.from("profiles").upsert({ id: userId, email, username, phone, role: "user" }).select();
+      await supabase
+        .from("profiles")
+        .upsert({ id: userId, email, username, phone, role: "user" })
+        .select();
     }
 
     alert("Signup complete. Check your email for confirmation");
@@ -30,15 +28,42 @@ export default function SignupPage() {
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "40px auto" }}>
-      <h2>Sign up</h2>
-      <form onSubmit={handleSignup}>
-        <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-        <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <button type="submit">Sign up</button>
+    <AuthLayout>
+      <h2 className="text-2xl font-bold mb-4 text-center">Sign Up</h2>
+      <form onSubmit={handleSignup} className="space-y-3">
+        <input
+          placeholder="Username"
+          className="border p-2 w-full rounded"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+        />
+        <input
+          placeholder="Email"
+          className="border p-2 w-full rounded"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          placeholder="Phone"
+          className="border p-2 w-full rounded"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          required
+        />
+        <input
+          placeholder="Password"
+          type="password"
+          className="border p-2 w-full rounded"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <button className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          Sign Up
+        </button>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

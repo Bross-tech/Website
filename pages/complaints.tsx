@@ -1,6 +1,7 @@
 import { useUser } from "@supabase/auth-helpers-react";
 import { useComplaints } from "@/hooks/useComplaints";
 import { useState } from "react";
+import AuthLayout from "@/components/AuthLayout";
 
 export default function ComplaintsPage() {
   const user = useUser();
@@ -19,7 +20,7 @@ export default function ComplaintsPage() {
   };
 
   return (
-    <div className="p-6">
+    <AuthLayout>
       <h1 className="text-2xl font-bold mb-4">Report Issue</h1>
       <form onSubmit={handleSubmit} className="mb-6 space-y-2">
         <select
@@ -64,14 +65,20 @@ export default function ComplaintsPage() {
             className="border p-3 rounded bg-gray-50 flex justify-between"
           >
             <div>
-              <p className="font-medium">{c.network} - {c.data_size}</p>
-              <p className="text-sm text-gray-600">To: {c.recipient_number}</p>
+              <p className="font-medium">
+                {c.network} - {c.data_size}
+              </p>
+              <p className="text-sm text-gray-600">
+                To: {c.recipient_number}
+              </p>
               <p className="text-xs text-gray-500">Status: {c.status}</p>
             </div>
-            <span className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString()}</span>
+            <span className="text-xs text-gray-400">
+              {new Date(c.created_at).toLocaleDateString()}
+            </span>
           </li>
         ))}
       </ul>
-    </div>
+    </AuthLayout>
   );
 }

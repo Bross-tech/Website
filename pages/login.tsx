@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
+import AuthLayout from "@/components/AuthLayout";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -9,20 +10,35 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return alert(error.message);
     alert("Logged in");
-    router.push("/profile");
+    router.push("/dashboard");
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "40px auto" }}>
-      <h2>Login</h2>
-      <form onSubmit={handleLogin}>
-        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <button type="submit">Login</button>
+    <AuthLayout>
+      <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
+      <form onSubmit={handleLogin} className="space-y-3">
+        <input
+          placeholder="Email"
+          className="border p-2 w-full rounded"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          placeholder="Password"
+          type="password"
+          className="border p-2 w-full rounded"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <button className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          Login
+        </button>
       </form>
-    </div>
+    </AuthLayout>
   );
 }
