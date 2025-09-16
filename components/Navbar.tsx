@@ -11,33 +11,26 @@ export default function Navbar() {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "12px 24px",
-        background: "#059669",
+        padding: "12px 16px",
+        background: "#111827",
         color: "white",
       }}
     >
-      <div style={{ fontWeight: "bold", fontSize: "18px" }}>My Shop</div>
-
-      <div style={{ position: "relative", cursor: "pointer" }} onClick={toggleCart}>
-        🛒
-        {cart.length > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: -8,
-              right: -8,
-              background: "red",
-              color: "white",
-              borderRadius: "50%",
-              padding: "2px 6px",
-              fontSize: "12px",
-              fontWeight: "bold",
-            }}
-          >
-            {cart.length}
-          </span>
-        )}
-      </div>
+      <h1 style={{ margin: 0 }}>Bundle Shop</h1>
+      <button
+        onClick={toggleCart}
+        style={{
+          position: "relative",
+          background: "#059669",
+          color: "white",
+          border: "none",
+          padding: "6px 12px",
+          borderRadius: 6,
+          cursor: "pointer",
+        }}
+      >
+        Cart ({cart.length})
+      </button>
     </nav>
   );
 }

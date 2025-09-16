@@ -1,57 +1,56 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode } from "react";
+import { Bundle } from "@/components/Bundles";
 
 type CartItem = {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
+  bundle: Bundle;
+  recipient: string;
 };
 
 type CartContextType = {
   cart: CartItem[];
-  addToCart: (item: CartItem) => void;
-  removeFromCart: (id: string) => void;
+  addToCart: (bundle: Bundle, recipient: string) => void;
+  removeFromCart: (index: number) => void;
   clearCart: () => void;
+  isOpen: boolean;
+  toggleCart: () => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const addToCart = (item: CartItem) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
-      if (existing) {
-        return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
-        );
-      }
-      return [...prev, item];
-    });
+  const addToCart = (bundle: Bundle, recipient: string) => {
+    if (cart.some((c) => c.recipient === recipient && c.bundle.id === bundle.id)) {
+      alert("This recipient already has that bundle in the cart!");
+      return;
+    }
+    setCart((prev) => [...prev, { bundle, recipient }]);
+    setIsOpen(true);
   };
 
-  const removeFromCart = (id: string) => {
-    setCart((prev) => prev.filter((i) => i.id !== id));
+  const removeFromCart = (index: number) => {
+    setCart((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const clearCart = () => {
-    setCart([]);
-  };
+  const clearCart = () => setCart([]);
+
+  const toggleCart = () => setIsOpen((o) => !o);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart }}>
+    <CartContext.Provider
+      value={{ cart, addToCart, removeFromCart, clearCart, isOpen, toggleCart }}
+    >
       {children}
     </CartContext.Provider>
   );
 }
 
 export function useCart() {
-  const context = useContext(CartContext);
-  if (!context) {
-    throw new Error("useCart must be used within a CartProvider");
-  }
-  return context;
+  const ctx = useContext(CartContext);
+  if (!ctx) throw new Error("useCart must be used within CartProvider");
+  return ctx;
 }
