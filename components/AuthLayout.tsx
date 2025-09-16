@@ -1,17 +1,27 @@
 import { ReactNode } from "react";
+import { useRouter } from "next/router";
+import { useEffect } from "react";
 
-export default function AuthLayout({ children }: { children: ReactNode }) {
+type Props = { children: ReactNode };
+
+export default function AuthLayout({ children }: Props) {
+  const router = useRouter();
+  const isLoggedIn = typeof window !== "undefined" && localStorage.getItem("user");
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push("/login");
+    }
+  }, [isLoggedIn, router]);
+
+  if (!isLoggedIn) return null;
+
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center"
-      style={{
-        backgroundImage:
-          "url('https://images.unsplash.com/photo-1525182008055-f88b95ff7980?auto=format&fit=crop&w=1350&q=80')",
-      }}
+      className="min-h-screen bg-cover bg-center flex items-center justify-center"
+      style={{ backgroundImage: "url('/bg.jpg')" }}
     >
-      <div className="bg-white bg-opacity-90 p-6 rounded-lg shadow-lg max-w-md w-full">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }

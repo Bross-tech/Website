@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function WhatsAppSupport(){
+export default function WhatsAppSupport() {
   const [showForm, setShowForm] = useState(false);
   const [network, setNetwork] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -9,28 +9,28 @@ export default function WhatsAppSupport(){
 
   return (
     <>
-      <div className="float-left-whatsapp">
-        <a href="https://wa.me/233247918766" target="_blank" rel="noreferrer" style={{ textDecoration:"none" }}>
-          <div className="card" style={{ width:56, height:56, borderRadius:28, background:"#25D366", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", boxShadow:"0 6px 18px rgba(0,0,0,0.15)"}}>
+      <div style={{ position: "fixed", left: 16, bottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+        <a href="https://wa.me/233247918766" target="_blank" rel="noreferrer">
+          <div style={{ width:56, height:56, borderRadius:28, background:"#25D366", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", boxShadow:"0 6px 18px rgba(0,0,0,0.15)"}}>
             Help
           </div>
         </a>
 
         <div onClick={() => setShowForm(s => !s)} style={{ cursor:"pointer" }}>
-          <div className="card" style={{ width:56, height:56, borderRadius:28, background:"#2BFF8E", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 6px 18px rgba(0,0,0,0.12)"}}>
+          <div style={{ width:56, height:56, borderRadius:28, background:"#2BFF8E", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 6px 18px rgba(0,0,0,0.12)"}}>
             Order
           </div>
         </div>
 
         <a href="https://chat.whatsapp.com/BoesNGVpxrq8H6KQ3J2x4w" target="_blank" rel="noreferrer">
-          <div className="card" style={{ width:56, height:56, borderRadius:28, background:"#075E54", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ width:56, height:56, borderRadius:28, background:"#075E54", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>
             Group
           </div>
         </a>
       </div>
 
       {showForm && (
-        <div style={{ position:"fixed", left:86, bottom:16, width:320 }} className="card">
+        <div style={{ position:"fixed", left:86, bottom:16, width:320, background:"#fff", padding:16, borderRadius:8, boxShadow:"0 6px 18px rgba(0,0,0,0.12)" }}>
           <h4 style={{ marginTop:0 }}>Order not received — Report</h4>
           <div style={{ marginBottom:8 }}>
             <label className="small">Network</label>
