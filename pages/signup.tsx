@@ -1,7 +1,3 @@
-/**
- * pages/signup.tsx
- * Sign up with email + password + username + phone (creates profiles row).
- */
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
@@ -11,42 +7,37 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  async function handleSignup(e: React.FormEvent) {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    // sign up
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    if (error) return alert(error.message);
 
-    // create auth user
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      setLoading(false);
-      return alert(error.message);
-    }
-
-    // create profile row using anon client; if you require service_role usage, do it server-side.
-    // We assume RLS allows insert on profiles for auth.uid() via Supabase auth trigger.
-    // If profile row must be inserted now, use supabase.from('profiles').insert(...)
+    // create profile
+    // NOTE: supabase auth will later call server trigger — but we upsert profile here safely
     const userId = data.user?.id;
     if (userId) {
-      await supabase.from("profiles").upsert({ id: userId, email, username, phone, role: "user" });
+      await supabase.from("profiles").upsert({ id: userId, email, username, phone, role: "user" }).select();
     }
 
-    setLoading(false);
-    alert("Signup success. Check your email for confirmation if required.");
+    alert("Signup complete. Check your email for confirmation");
     router.push("/login");
-  }
+  };
 
   return (
-    <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
-      <h2>Create account</h2>
-      <form onSubmit={handleSignup} style={{ display: "grid", gap: 8 }}>
+    <div style={{ maxWidth: 420, margin: "40px auto" }}>
+      <h2>Sign up</h2>
+      <form onSubmit={handleSignup}>
+        <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
         <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
-        <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-        <input placeholder="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        <button type="submit" disabled={loading}>{loading ? "Creating…" : "Create account"}</button>
+        <input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <button type="submit">Sign up</button>
       </form>
     </div>
   );

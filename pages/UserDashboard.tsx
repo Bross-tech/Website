@@ -1,31 +1,10 @@
-/**
- * pages/UserDashboard.tsx
- * Simple user dashboard. Extend as needed.
- */
-import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import React from "react";
 
-export default function UserDashboard() {
-  const [profile, setProfile] = useState<any>(null);
-
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) return;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
-      setProfile(prof);
-    };
-    fetch();
-  }, []);
-
-  if (!profile) return <p>Loading profile…</p>;
-
+export default function UserDashboardPage() {
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Welcome, {profile.username ?? profile.email}</h2>
-      <p>Role: {profile.role ?? "user"}</p>
-      <p>Phone: {profile.phone ?? "not provided"}</p>
-      {/* add wallet / purchases / etc */}
+    <div style={{ padding: 20 }}>
+      <h2>User Dashboard</h2>
+      <p>Customer/Agent view will show wallet, stats, buy bundles and orders.</p>
     </div>
   );
 }

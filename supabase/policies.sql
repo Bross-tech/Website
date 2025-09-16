@@ -1,39 +1,33 @@
--- supabase/policies.sql
--- Enables RLS and sensible policies for profiles and announcements
+-- policies.sql (row-level security basics)
+-- Enable RLS where appropriate
+ALTER TABLE IF EXISTS public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.announcements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.orders ENABLE ROW LEVEL SECURITY;
 
--- Enable RLS
-alter table profiles enable row level security;
-alter table announcements enable row level security;
+-- Profiles: user reads their own profile
+CREATE POLICY IF NOT EXISTS "profiles_self_read" ON public.profiles FOR SELECT
+USING (auth.uid() = id);
 
--- PROFILES
--- Allow authenticated users to insert their own profile (auth.uid() must equal id)
-create policy "Insert own profile" on profiles for insert
-with check (auth.uid() = id);
+CREATE POLICY IF NOT EXISTS "profiles_self_modify" ON public.profiles FOR UPDATE
+USING (auth.uid() = id);
 
--- Allow authenticated users to select their own profile
-create policy "Select own profile" on profiles for select
-using (auth.uid() = id);
+-- Admins (role='admin' in profiles) can manage profiles
+CREATE POLICY IF NOT EXISTS "profiles_admin_manage" ON public.profiles FOR ALL
+USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
--- Allow authenticated users to update their own profile (username/phone)
-create policy "Update own profile" on profiles for update
-using (auth.uid() = id)
-with check (auth.uid() = id);
+-- Announcements: everyone can read
+CREATE POLICY IF NOT EXISTS "announcements_public_read" ON public.announcements FOR SELECT USING (true);
+-- Insert only admins
+CREATE POLICY IF NOT EXISTS "announcements_admin_insert" ON public.announcements FOR INSERT
+WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
--- Admins: allow full access for rows where profiles.role = 'admin'
-create policy "Admins manage profiles" on profiles for all
-using (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'));
+-- Orders: users can insert (place orders)
+CREATE POLICY IF NOT EXISTS "orders_insert_by_user" ON public.orders FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
--- ANNOUNCEMENTS
--- Everyone (authenticated) can read announcements
-create policy "Select announcements" on announcements for select using (true);
+-- Users can read their own orders
+CREATE POLICY IF NOT EXISTS "orders_select_own" ON public.orders FOR SELECT
+USING (user_id = auth.uid());
 
--- Only admins can insert announcements
-create policy "Admins insert announcements" on announcements for insert
-with check (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'));
-
--- Only admins can update/delete announcements
-create policy "Admins update announcements" on announcements for update
-using (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'));
-
-create policy "Admins delete announcements" on announcements for delete
-using (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'));
+-- Admins can read/manage all orders
+CREATE POLICY IF NOT EXISTS "orders_admin_manage" ON public.orders FOR ALL
+USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));

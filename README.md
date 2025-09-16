@@ -1,43 +1,8 @@
-My Supabase + Next.js Dashboard
+# DATA STORE 4GH — Project scaffold
 
-A modern dashboard application built with Next.js, Supabase, and Paystack for authentication, payments, referrals, notifications, and analytics.
+Files created by script. IMPORTANT: set environment variables (Supabase, Paystack, Africa's Talking) in your deployment environment — do NOT store secrets in repo.
 
-📌 Features
-
-🔑 User Authentication (Sign up / Login with Supabase Auth)
-
-💳 Wallet System with deposits (Paystack integration)
-
-📦 Bundle Purchases (Customer & Agent pricing)
-
-👥 Upgrade to Agent role with extra features
-
-📊 Purchase Analytics (Charts with Recharts)
-
-🔔 Real-time Notifications
-
-📢 Agent Announcements
-
-🧾 CSV Export for purchases
-
-🌓 Dark Mode Toggle
-
-💬 WhatsApp Support Widget
-
-🎨 Modern UI with TailwindCSS
-
-
-
----
-
-⚡ Tech Stack
-
-Frontend: Next.js (React + TypeScript)
-
-Database & Auth: Supabase
-
-Payments: Paystack
-
-UI: TailwindCSS + Recharts
-
-Hosting: Vercel / Netlify / Supabase Edge
+Run:
+- `npm install`
+- create `.env.local` with your NEXT_PUBLIC_SUPABASE_URL and keys (locally only)
+- `npm run dev` to run locally

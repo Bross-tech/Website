@@ -1,30 +1,19 @@
-/**
- * pages/reset-password.tsx
- * Request password reset by sending a magic link / reset email.
- */
-import React, { useState } from "react";
+import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-export default function ResetPassword() {
+export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  async function handleReset(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/profile' });
-    setLoading(false);
-    if (error) alert(error.message);
-    else alert("Check your email for a password reset link.");
-  }
+  const requestReset = async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) alert(error.message); else alert("Reset link sent to email");
+  };
 
   return (
-    <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
+    <div style={{ padding: 20 }}>
       <h2>Reset password</h2>
-      <form onSubmit={handleReset} style={{ display: "grid", gap: 8 }}>
-        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <button type="submit" disabled={loading}>{loading ? "Sending…" : "Send reset email"}</button>
-      </form>
+      <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <button onClick={requestReset}>Send reset link</button>
     </div>
   );
 }
