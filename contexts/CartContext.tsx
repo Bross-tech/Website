@@ -1,49 +1,28 @@
 "use client";
-
 import { createContext, useContext, useState, ReactNode } from "react";
-import { Bundle } from "@/components/Bundles";
+import type { Bundle } from "@/components/Bundles";
 
-type CartItem = {
-  bundle: Bundle;
-  recipient: string;
-};
+type CartItem = { bundle: Bundle; recipient: string };
 
 type CartContextType = {
-  cart: CartItem[];
-  addToCart: (bundle: Bundle, recipient: string) => void;
-  removeFromCart: (index: number) => void;
+  items: CartItem[];
+  addItem: (bundle: Bundle, recipient: string) => void;
   clearCart: () => void;
-  isOpen: boolean;
-  toggleCart: () => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [items, setItems] = useState<CartItem[]>([]);
 
-  const addToCart = (bundle: Bundle, recipient: string) => {
-    if (cart.some((c) => c.recipient === recipient && c.bundle.id === bundle.id)) {
-      alert("This recipient already has that bundle in the cart!");
-      return;
-    }
-    setCart((prev) => [...prev, { bundle, recipient }]);
-    setIsOpen(true);
+  const addItem = (bundle: Bundle, recipient: string) => {
+    setItems((prev) => [...prev, { bundle, recipient }]);
   };
 
-  const removeFromCart = (index: number) => {
-    setCart((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const clearCart = () => setCart([]);
-
-  const toggleCart = () => setIsOpen((o) => !o);
+  const clearCart = () => setItems([]);
 
   return (
-    <CartContext.Provider
-      value={{ cart, addToCart, removeFromCart, clearCart, isOpen, toggleCart }}
-    >
+    <CartContext.Provider value={{ items, addItem, clearCart }}>
       {children}
     </CartContext.Provider>
   );
