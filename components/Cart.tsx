@@ -1,4 +1,5 @@
-import { useCart } from "../context/CartContext";
+// components/Cart.tsx
+import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function Cart({ userId }: { userId: string }) {
@@ -6,36 +7,60 @@ export default function Cart({ userId }: { userId: string }) {
   const total = items.reduce((s, i) => s + i.bundle.priceGhs, 0);
 
   const handleCheckout = async () => {
-    if (!userId) return alert("Login required");
+    if (!userId) {
+      alert("Please login to checkout");
+      return;
+    }
 
-    // check wallet balance
-    const { data: wallet } = await supabase
+    // Get wallet balance
+    const { data: wallet, error: walletErr } = await supabase
       .from("wallets")
       .select("balance")
       .eq("user_id", userId)
       .single();
 
-    if (!wallet || wallet.balance < total) {
-      return alert("Insufficient wallet balance");
+    if (walletErr) {
+      console.error(walletErr);
+      alert("Error fetching wallet balance");
+      return;
     }
 
-    // deduct wallet + create orders
+    if (!wallet || wallet.balance < total) {
+      alert("Insufficient wallet balance");
+      return;
+    }
+
+    // Deduct wallet (make sure you created the rpc `deduct_wallet`)
     const { error: deductErr } = await supabase.rpc("deduct_wallet", {
       p_user_id: userId,
       p_amount: total,
     });
-    if (deductErr) return alert("Error deducting balance");
 
-    for (const it of items) {
-      await supabase.from("orders").insert({
-        user_id: userId,
-        bundle: it.bundle,
-        recipient: it.recipient,
-        status: "Pending",
-      });
+    if (deductErr) {
+      console.error(deductErr);
+      alert("Error deducting wallet balance");
+      return;
     }
 
-    alert("Order placed!");
+    // Create orders
+    const { error: orderErr } = await supabase.from("orders").insert(
+      items.map((it) => ({
+        user_id: userId,
+        network: it.bundle.network,
+        bundle_size: it.bundle.size,
+        price: it.bundle.priceGhs,
+        recipient: it.recipient,
+        status: "Pending",
+      }))
+    );
+
+    if (orderErr) {
+      console.error(orderErr);
+      alert("Error creating orders");
+      return;
+    }
+
+    alert("Order placed successfully!");
     clearCart();
   };
 
