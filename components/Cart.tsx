@@ -1,46 +1,68 @@
-import { useState } from "react";
-import type { Bundle } from "./Bundles";
+import { useCart } from "../context/CartContext";
+import { supabase } from "@/lib/supabaseClient";
 
-export default function Cart(){
-  const [items, setItems] = useState<{bundle:Bundle, recipient:string}[]>([]);
+export default function Cart({ userId }: { userId: string }) {
+  const { items, clearCart } = useCart();
+  const total = items.reduce((s, i) => s + i.bundle.priceGhs, 0);
 
-  // expose quick add (used by Bundles page)
-  (window as any).__cartAdd = (b: Bundle) => {
-    const recipient = prompt("Enter recipient number (include country code)");
-    if(!recipient) return;
-    setItems(prev => [...prev, { bundle: b, recipient }]);
-    alert("Added to cart");
+  const handleCheckout = async () => {
+    if (!userId) return alert("Login required");
+
+    // check wallet balance
+    const { data: wallet } = await supabase
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", userId)
+      .single();
+
+    if (!wallet || wallet.balance < total) {
+      return alert("Insufficient wallet balance");
+    }
+
+    // deduct wallet + create orders
+    const { error: deductErr } = await supabase.rpc("deduct_wallet", {
+      p_user_id: userId,
+      p_amount: total,
+    });
+    if (deductErr) return alert("Error deducting balance");
+
+    for (const it of items) {
+      await supabase.from("orders").insert({
+        user_id: userId,
+        bundle: it.bundle,
+        recipient: it.recipient,
+        status: "Pending",
+      });
+    }
+
+    alert("Order placed!");
+    clearCart();
   };
 
-  const total = items.reduce((s,i)=> s + i.bundle.priceGhs, 0);
-
   return (
-    <div style={{
-      position:'fixed',
-      right:18,
-      bottom:18,
-      width:280,
-      borderRadius:12,
-      padding:10,
-      background:"linear-gradient(180deg,#10b981,#059669)",
-      color:"#fff",
-      boxShadow:"0 8px 30px rgba(0,0,0,0.18)"
-    }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+    <div className="fixed right-4 bottom-4 w-72 rounded-xl p-4 bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg">
+      <div className="flex justify-between items-center">
         <strong>Cart</strong>
         <span>{items.length}</span>
       </div>
-      <div style={{ fontSize:12, opacity:0.9 }}>Recipient, size & cost</div>
-      <ul style={{ marginTop:8, maxHeight:160, overflowY:"auto" }}>
+
+      <ul className="mt-2 max-h-40 overflow-y-auto text-sm">
         {items.map((it, idx) => (
-          <li key={idx} style={{ marginBottom:6 }}>
-            {it.bundle.network} — {it.bundle.size} — {it.recipient} — GHS {it.bundle.priceGhs.toFixed(2)}
+          <li key={idx} className="mb-1">
+            {it.bundle.network} — {it.bundle.size} — {it.recipient} — GHS{" "}
+            {it.bundle.priceGhs.toFixed(2)}
           </li>
         ))}
       </ul>
-      <div style={{ marginTop:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+
+      <div className="mt-3 flex justify-between items-center">
         <strong>Total: GHS {total.toFixed(2)}</strong>
-        <button className="btn" onClick={() => alert("Implement checkout/Paystack flow")}>Pay</button>
+        <button
+          className="bg-white text-emerald-600 px-3 py-1 rounded hover:bg-gray-100"
+          onClick={handleCheckout}
+        >
+          Pay
+        </button>
       </div>
     </div>
   );
