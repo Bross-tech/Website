@@ -1,13 +1,14 @@
 "use client";
 
-import { useCart } from "@/context/CartContext";
-import { supabase } from "@/lib/supabaseClient";
+import { useCart } from "@/contexts/CartContext";
 import { useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function CartWidget({ userId }: { userId: string }) {
   const { cart, removeFromCart, clearCart, isOpen, toggleCart } = useCart();
   const total = cart.reduce((s, c) => s + c.bundle.priceGhs, 0);
 
+  // Close cart on Escape
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") toggleCart();
@@ -16,7 +17,6 @@ export default function CartWidget({ userId }: { userId: string }) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, toggleCart]);
 
-  // ✅ Checkout flow with Supabase
   const handleCheckout = async () => {
     if (!userId) {
       alert("Please login to checkout");
@@ -41,7 +41,7 @@ export default function CartWidget({ userId }: { userId: string }) {
       return;
     }
 
-    // 2. Deduct wallet balance (make sure `deduct_wallet` exists as RPC in Supabase)
+    // 2. Deduct wallet (rpc must exist in Supabase)
     const { error: deductErr } = await supabase.rpc("deduct_wallet", {
       p_user_id: userId,
       p_amount: total,
@@ -53,7 +53,7 @@ export default function CartWidget({ userId }: { userId: string }) {
       return;
     }
 
-    // 3. Create orders
+    // 3. Create orders for each bundle
     const { error: orderErr } = await supabase.from("orders").insert(
       cart.map((c) => ({
         user_id: userId,
@@ -73,7 +73,7 @@ export default function CartWidget({ userId }: { userId: string }) {
 
     alert("✅ Order placed successfully!");
     clearCart();
-    toggleCart(); // close widget after success
+    toggleCart();
   };
 
   return (
@@ -131,7 +131,7 @@ export default function CartWidget({ userId }: { userId: string }) {
           </button>
         </div>
 
-        {/* Cart Items */}
+        {/* Items */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {cart.length === 0 ? (
             <p style={{ opacity: 0.6 }}>Your cart is empty</p>
@@ -141,21 +141,20 @@ export default function CartWidget({ userId }: { userId: string }) {
                 <li
                   key={i}
                   style={{
-                    marginBottom: 12,
-                    padding: 10,
-                    border: "1px solid #eee",
-                    borderRadius: 8,
-                    background: "#f9fafb",
+                    marginBottom: 10,
+                    borderBottom: "1px solid #eee",
+                    paddingBottom: 8,
                   }}
                 >
-                  <div>📶 <strong>{c.bundle.network}</strong></div>
-                  <div>📦 {c.bundle.size}</div>
-                  <div>👤 Recipient: {c.recipient}</div>
-                  <div>💰 GHS {c.bundle.priceGhs.toFixed(2)}</div>
+                  <div>
+                    <strong>{c.bundle.network}</strong> — {c.bundle.size}
+                  </div>
+                  <div>Recipient: {c.recipient}</div>
+                  <div>GHS {c.bundle.priceGhs.toFixed(2)}</div>
                   <button
                     onClick={() => removeFromCart(i)}
                     style={{
-                      marginTop: 6,
+                      marginTop: 4,
                       fontSize: 12,
                       color: "red",
                       background: "none",
