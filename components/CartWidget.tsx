@@ -1,12 +1,14 @@
 "use client";
 
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/context/CartContext";  // ✅ singular "context"
 import { useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function CartWidget() {
-  const { cart, removeFromCart, clearCart, isOpen, toggleCart } = useCart();
+  const { cart, removeFromCart, clearCart, isOpen, toggleCart, userId } = useCart();
   const total = cart.reduce((s, c) => s + c.bundle.priceGhs, 0);
 
+  // Escape key closes cart
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") toggleCart();
@@ -14,6 +16,42 @@ export default function CartWidget() {
     if (isOpen) document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, toggleCart]);
+
+  // ✅ Unified checkout with Supabase
+  const handleCheckout = async () => {
+    if (!userId) return alert("Login required");
+
+    // Check wallet balance
+    const { data: wallet } = await supabase
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", userId)
+      .single();
+
+    if (!wallet || wallet.balance < total) {
+      return alert("Insufficient wallet balance");
+    }
+
+    // Deduct + create orders
+    const { error: deductErr } = await supabase.rpc("deduct_wallet", {
+      p_user_id: userId,
+      p_amount: total,
+    });
+    if (deductErr) return alert("Error deducting balance");
+
+    for (const it of cart) {
+      await supabase.from("orders").insert({
+        user_id: userId,
+        bundle: it.bundle,
+        recipient: it.recipient,
+        status: "Pending",
+      });
+    }
+
+    alert("Order placed!");
+    clearCart();
+    toggleCart();
+  };
 
   return (
     <>
@@ -47,6 +85,7 @@ export default function CartWidget() {
           flexDirection: "column",
         }}
       >
+        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -69,6 +108,7 @@ export default function CartWidget() {
           </button>
         </div>
 
+        {/* Items */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {cart.length === 0 ? (
             <p style={{ opacity: 0.6 }}>Your cart is empty</p>
@@ -107,6 +147,7 @@ export default function CartWidget() {
           )}
         </div>
 
+        {/* Footer */}
         <div style={{ borderTop: "1px solid #ddd", paddingTop: 12 }}>
           <strong>Total: GHS {total.toFixed(2)}</strong>
           <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
@@ -120,7 +161,7 @@ export default function CartWidget() {
                 borderRadius: 6,
                 cursor: "pointer",
               }}
-              onClick={() => alert("Proceed to Paystack flow (implement API)")}
+              onClick={handleCheckout}
             >
               Pay Now
             </button>
@@ -141,4 +182,4 @@ export default function CartWidget() {
       </div>
     </>
   );
-}
+          }
