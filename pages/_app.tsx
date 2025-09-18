@@ -1,8 +1,8 @@
 // pages/_app.tsx
 import type { AppProps } from "next/app";
-import { CartProvider } from "@/context/CartContext";   // ✅ singular folder name
+import { CartProvider } from "@/context/CartContext";   // ✅ Corrected folder path
 import Navbar from "@/components/Navbar";
-import Cart from "@/components/Cart";                   // ✅ use Cart.tsx
+import CartWidget from "@/components/CartWidget";       // ✅ Use CartWidget instead of Cart
 import "@/styles/globals.css";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
@@ -10,7 +10,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     <CartProvider>
       <Navbar />
       <Component {...pageProps} />
-      <Cart />
+      <CartWidget /> {/* ✅ Floating widget instead of full Cart */}
     </CartProvider>
   );
 }
