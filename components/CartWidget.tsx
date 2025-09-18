@@ -1,208 +1,74 @@
-"use client";
-
-import { useCart } from "@/contexts/CartContext";
-import { useEffect } from "react";
-import { supabase } from "@/lib/supabaseClient";
+// components/CartWidget.tsx
+import { useCart } from "@/context/CartContext";
 
 export default function CartWidget({ userId }: { userId: string }) {
-  const { cart, removeFromCart, clearCart, isOpen, toggleCart } = useCart();
-  const total = cart.reduce((s, c) => s + c.bundle.priceGhs, 0);
+  const { items, removeFromCart, clearCart, isOpen, toggleCart } = useCart();
 
-  // Close cart on Escape
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") toggleCart();
-    };
-    if (isOpen) document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [isOpen, toggleCart]);
-
-  const handleCheckout = async () => {
-    if (!userId) {
-      alert("Please login to checkout");
-      return;
-    }
-
-    // 1. Get wallet balance
-    const { data: wallet, error: walletErr } = await supabase
-      .from("wallets")
-      .select("balance")
-      .eq("user_id", userId)
-      .single();
-
-    if (walletErr) {
-      console.error(walletErr);
-      alert("Error fetching wallet balance");
-      return;
-    }
-
-    if (!wallet || wallet.balance < total) {
-      alert("Insufficient wallet balance");
-      return;
-    }
-
-    // 2. Deduct wallet (rpc must exist in Supabase)
-    const { error: deductErr } = await supabase.rpc("deduct_wallet", {
-      p_user_id: userId,
-      p_amount: total,
-    });
-
-    if (deductErr) {
-      console.error(deductErr);
-      alert("Error deducting wallet balance");
-      return;
-    }
-
-    // 3. Create orders for each bundle
-    const { error: orderErr } = await supabase.from("orders").insert(
-      cart.map((c) => ({
-        user_id: userId,
-        network: c.bundle.network,
-        bundle_size: c.bundle.size,
-        price: c.bundle.priceGhs,
-        recipient: c.recipient,
-        status: "Pending",
-      }))
-    );
-
-    if (orderErr) {
-      console.error(orderErr);
-      alert("Error creating orders");
-      return;
-    }
-
-    alert("✅ Order placed successfully!");
-    clearCart();
-    toggleCart();
-  };
+  const total = items.reduce((sum, c) => sum + c.bundle.priceGhs, 0);
 
   return (
-    <>
-      {isOpen && (
-        <div
-          onClick={toggleCart}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.4)",
-            zIndex: 999,
-          }}
-        />
-      )}
-
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          height: "100%",
-          width: 320,
-          background: "white",
-          color: "black",
-          padding: 16,
-          boxShadow: "-4px 0 12px rgba(0,0,0,0.2)",
-          transform: isOpen ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.3s ease-in-out",
-          zIndex: 1000,
-          display: "flex",
-          flexDirection: "column",
-        }}
+    <div className="fixed bottom-6 right-6">
+      {/* Floating button to open/close */}
+      <button
+        onClick={toggleCart}
+        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full shadow-lg"
       >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <h3 style={{ margin: 0 }}>Cart ({cart.length})</h3>
-          <button
-            onClick={toggleCart}
-            style={{
-              background: "transparent",
-              border: "none",
-              fontSize: 20,
-              cursor: "pointer",
-            }}
-          >
-            ✕
-          </button>
-        </div>
+        🛒 {items.length}
+      </button>
 
-        {/* Items */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          {cart.length === 0 ? (
-            <p style={{ opacity: 0.6 }}>Your cart is empty</p>
+      {isOpen && (
+        <div className="mt-2 bg-white shadow-lg p-4 rounded-xl border w-80">
+          <h2 className="text-lg font-bold mb-2">Your Cart</h2>
+
+          {items.length === 0 ? (
+            <p className="text-gray-500">Cart is empty.</p>
           ) : (
-            <ul style={{ padding: 0, margin: 0, listStyle: "none" }}>
-              {cart.map((c, i) => (
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
+              {items.map((c, i) => (
                 <li
                   key={i}
-                  style={{
-                    marginBottom: 10,
-                    borderBottom: "1px solid #eee",
-                    paddingBottom: 8,
-                  }}
+                  className="flex justify-between items-center text-sm border-b pb-1"
                 >
-                  <div>
-                    <strong>{c.bundle.network}</strong> — {c.bundle.size}
+                  <span>
+                    {c.bundle.network} {c.bundle.size} → {c.recipient}
+                  </span>
+                  <div className="flex gap-2 items-center">
+                    <span className="font-semibold">
+                      GHS {c.bundle.priceGhs}
+                    </span>
+                    <button
+                      onClick={() => removeFromCart(i)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <div>Recipient: {c.recipient}</div>
-                  <div>GHS {c.bundle.priceGhs.toFixed(2)}</div>
-                  <button
-                    onClick={() => removeFromCart(i)}
-                    style={{
-                      marginTop: 4,
-                      fontSize: 12,
-                      color: "red",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Remove
-                  </button>
                 </li>
               ))}
             </ul>
           )}
-        </div>
 
-        {/* Footer */}
-        <div style={{ borderTop: "1px solid #ddd", paddingTop: 12 }}>
-          <strong>Total: GHS {total.toFixed(2)}</strong>
-          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+          <div className="flex justify-between items-center mt-3 font-bold">
+            <span>Total:</span>
+            <span>GHS {total.toFixed(2)}</span>
+          </div>
+
+          <div className="flex gap-2 mt-4">
             <button
-              style={{
-                flex: 1,
-                background: "#059669",
-                color: "white",
-                padding: "8px",
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-              }}
-              onClick={handleCheckout}
-            >
-              Pay Now
-            </button>
-            <button
-              style={{
-                background: "#f3f4f6",
-                padding: "8px",
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-              }}
               onClick={clearCart}
+              className="flex-1 bg-gray-300 hover:bg-gray-400 text-black px-3 py-1 rounded"
             >
               Clear
             </button>
+            <button
+              onClick={() => alert("Checkout not implemented yet")}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded"
+            >
+              Checkout
+            </button>
           </div>
         </div>
-      </div>
-    </>
+      )}
+    </div>
   );
 }
