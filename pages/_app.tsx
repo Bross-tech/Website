@@ -2,9 +2,9 @@
 import type { AppProps } from "next/app";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { CartProvider } from "@/contexts/CartContext";   // ✅ singular
+import { CartProvider } from "@/context/CartContext";   // ✅ fixed: singular "context"
 import Navbar from "@/components/Navbar";
-import CartWidget from "@/components/CartWidget";        // ✅ updated widget
+import CartWidget from "@/components/CartWidget";
 import "@/styles/globals.css";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
@@ -30,7 +30,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     <CartProvider>
       <Navbar />
       <Component {...pageProps} userId={userId} />
-      <CartWidget userId={userId ?? ""} /> {/* ✅ Pass userId */}
+      <CartWidget userId={userId ?? ""} />
     </CartProvider>
   );
-        }
+}
