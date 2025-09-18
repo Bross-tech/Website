@@ -1,14 +1,13 @@
 "use client";
 
-import { useCart } from "@/context/CartContext";  // ✅ singular "context"
-import { useEffect } from "react";
+import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabaseClient";
+import { useEffect } from "react";
 
-export default function CartWidget() {
-  const { cart, removeFromCart, clearCart, isOpen, toggleCart, userId } = useCart();
+export default function CartWidget({ userId }: { userId: string }) {
+  const { cart, removeFromCart, clearCart, isOpen, toggleCart } = useCart();
   const total = cart.reduce((s, c) => s + c.bundle.priceGhs, 0);
 
-  // Escape key closes cart
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") toggleCart();
@@ -17,40 +16,64 @@ export default function CartWidget() {
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, toggleCart]);
 
-  // ✅ Unified checkout with Supabase
+  // ✅ Checkout flow with Supabase
   const handleCheckout = async () => {
-    if (!userId) return alert("Login required");
+    if (!userId) {
+      alert("Please login to checkout");
+      return;
+    }
 
-    // Check wallet balance
-    const { data: wallet } = await supabase
+    // 1. Get wallet balance
+    const { data: wallet, error: walletErr } = await supabase
       .from("wallets")
       .select("balance")
       .eq("user_id", userId)
       .single();
 
-    if (!wallet || wallet.balance < total) {
-      return alert("Insufficient wallet balance");
+    if (walletErr) {
+      console.error(walletErr);
+      alert("Error fetching wallet balance");
+      return;
     }
 
-    // Deduct + create orders
+    if (!wallet || wallet.balance < total) {
+      alert("Insufficient wallet balance");
+      return;
+    }
+
+    // 2. Deduct wallet balance (make sure `deduct_wallet` exists as RPC in Supabase)
     const { error: deductErr } = await supabase.rpc("deduct_wallet", {
       p_user_id: userId,
       p_amount: total,
     });
-    if (deductErr) return alert("Error deducting balance");
 
-    for (const it of cart) {
-      await supabase.from("orders").insert({
-        user_id: userId,
-        bundle: it.bundle,
-        recipient: it.recipient,
-        status: "Pending",
-      });
+    if (deductErr) {
+      console.error(deductErr);
+      alert("Error deducting wallet balance");
+      return;
     }
 
-    alert("Order placed!");
+    // 3. Create orders
+    const { error: orderErr } = await supabase.from("orders").insert(
+      cart.map((c) => ({
+        user_id: userId,
+        network: c.bundle.network,
+        bundle_size: c.bundle.size,
+        price: c.bundle.priceGhs,
+        recipient: c.recipient,
+        status: "Pending",
+      }))
+    );
+
+    if (orderErr) {
+      console.error(orderErr);
+      alert("Error creating orders");
+      return;
+    }
+
+    alert("✅ Order placed successfully!");
     clearCart();
-    toggleCart();
+    toggleCart(); // close widget after success
   };
 
   return (
@@ -108,7 +131,7 @@ export default function CartWidget() {
           </button>
         </div>
 
-        {/* Items */}
+        {/* Cart Items */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {cart.length === 0 ? (
             <p style={{ opacity: 0.6 }}>Your cart is empty</p>
@@ -118,20 +141,21 @@ export default function CartWidget() {
                 <li
                   key={i}
                   style={{
-                    marginBottom: 10,
-                    borderBottom: "1px solid #eee",
-                    paddingBottom: 8,
+                    marginBottom: 12,
+                    padding: 10,
+                    border: "1px solid #eee",
+                    borderRadius: 8,
+                    background: "#f9fafb",
                   }}
                 >
-                  <div>
-                    <strong>{c.bundle.network}</strong> — {c.bundle.size}
-                  </div>
-                  <div>Recipient: {c.recipient}</div>
-                  <div>GHS {c.bundle.priceGhs.toFixed(2)}</div>
+                  <div>📶 <strong>{c.bundle.network}</strong></div>
+                  <div>📦 {c.bundle.size}</div>
+                  <div>👤 Recipient: {c.recipient}</div>
+                  <div>💰 GHS {c.bundle.priceGhs.toFixed(2)}</div>
                   <button
                     onClick={() => removeFromCart(i)}
                     style={{
-                      marginTop: 4,
+                      marginTop: 6,
                       fontSize: 12,
                       color: "red",
                       background: "none",
@@ -182,4 +206,4 @@ export default function CartWidget() {
       </div>
     </>
   );
-          }
+}
