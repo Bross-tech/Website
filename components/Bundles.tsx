@@ -1,6 +1,6 @@
 // components/Bundles.tsx
 import { useEffect, useState } from "react";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@/contexts/CartContext";   // ✅ fixed plural
 import { supabase } from "@/lib/supabaseClient";
 
 export type Bundle = {
