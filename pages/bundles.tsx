@@ -1,21 +1,24 @@
-import Head from "next/head";
-import Bundles from "../components/Bundles";
-import Cart from "../components/Cart";
-import WhatsAppSupport from "../components/WhatsAppSupport";
+// pages/bundles.tsx
+"use client";
 
-export default function BundlesPage(){
+import Head from "next/head";
+import Bundles from "@/components/Bundles";          // component
+import Navbar from "@/components/Navbar";
+import WhatsAppSupport from "@/components/WhatsAppSupport";
+import CartWidget from "@/components/CartWidget";    // replaces old Cart.tsx
+
+export default function BundlesPage() {
   return (
     <>
-      <Head><title>Bundles — DataStore4gh</title></Head>
-      <div className="container">
-        <div className="top-row">
-          <h1>Bundles</h1>
-        </div>
-
-        <Bundles />
-        <Cart />
-        <WhatsAppSupport />
-      </div>
+      <Head>
+        <title>Available Bundles</title>
+      </Head>
+      <Navbar />
+      <main className="p-6">
+        <Bundles />          {/* shows the bundle list */}
+        <CartWidget />       {/* floating mini cart */}
+        <WhatsAppSupport />  {/* WhatsApp support button */}
+      </main>
     </>
   );
 }
