@@ -1,9 +1,9 @@
 "use client";
 
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/context/CartContext";
 
 export default function Navbar() {
-  const { cart, toggleCart } = useCart();
+  const { items, toggleCart } = useCart();
 
   return (
     <nav
@@ -29,7 +29,7 @@ export default function Navbar() {
           cursor: "pointer",
         }}
       >
-        Cart ({cart.length})
+        Cart ({items.length})
       </button>
     </nav>
   );
