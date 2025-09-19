@@ -1,7 +1,7 @@
 // components/CartWidget.tsx
 import { useCart } from "@/context/CartContext";
 
-export default function CartWidget({ userId }: { userId: string }) {
+export default function CartWidget() {
   const { items, removeFromCart, clearCart, isOpen, toggleCart } = useCart();
 
   const total = items.reduce((sum, c) => sum + c.bundle.priceGhs, 0);
