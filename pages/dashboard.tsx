@@ -159,4 +159,4 @@ export default function Dashboard() {
       <CartWidget />   {/* ✅ replaced old <Cart /> */}
     </div>
   );
-}
+      }
