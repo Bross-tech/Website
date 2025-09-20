@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
 import Bundles from "../components/Bundles";
-import Cart from "../components/Cart";
+import CartWidget from "../components/CartWidget";   // ✅ fixed import
 
 export default function Dashboard() {
   const [wallet, setWallet] = useState<number>(0);
@@ -156,7 +156,7 @@ export default function Dashboard() {
       </div>
 
       {/* Floating Cart */}
-      <Cart role={role} />
+      <CartWidget />   {/* ✅ replaced old <Cart /> */}
     </div>
   );
 }
