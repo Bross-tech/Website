@@ -12,7 +12,7 @@ export type Bundle = {
   priceCustomer: number;
 };
 
-export default function Bundles({ role }: { role: "agent" | "customer" }) {
+export default function Bundles() {
   const { addToCart } = useCart();
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [query, setQuery] = useState("");
@@ -37,13 +37,15 @@ export default function Bundles({ role }: { role: "agent" | "customer" }) {
     fetchBundles();
   }, []);
 
+  // ✅ sorting based on *customer price by default*
+  // Context will apply the real role pricing when adding to cart
   const list = bundles
     .filter((b) =>
       `${b.network} ${b.size}`.toLowerCase().includes(query.toLowerCase())
     )
     .sort((a, b) => {
-      const priceA = role === "agent" ? a.priceAgent : a.priceCustomer;
-      const priceB = role === "agent" ? b.priceAgent : b.priceCustomer;
+      const priceA = a.priceCustomer;
+      const priceB = b.priceCustomer;
       return sort === "asc" ? priceA - priceB : priceB - priceA;
     });
 
@@ -51,10 +53,7 @@ export default function Bundles({ role }: { role: "agent" | "customer" }) {
     const recipient = prompt("Enter recipient number (include country code)");
     if (!recipient) return;
 
-    const price =
-      role === "agent" ? bundle.priceAgent : bundle.priceCustomer;
-
-    addToCart(bundle, recipient, price);
+    addToCart(bundle, recipient); // ✅ no price passed
     alert("Added to cart!");
   };
 
@@ -85,27 +84,22 @@ export default function Bundles({ role }: { role: "agent" | "customer" }) {
       </div>
 
       <ul className="grid gap-3">
-        {list.map((b) => {
-          const price =
-            role === "agent" ? b.priceAgent : b.priceCustomer;
-          return (
-            <li
-              key={b.id}
-              className="flex justify-between items-center p-3 border rounded"
+        {list.map((b) => (
+          <li
+            key={b.id}
+            className="flex justify-between items-center p-3 border rounded"
+          >
+            <div>
+              <strong>{b.network}</strong> — {b.size}
+            </div>
+            <button
+              onClick={() => handleAdd(b)}
+              className="bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-700"
             >
-              <div>
-                <strong>{b.network}</strong> — {b.size} — GHS{" "}
-                {price.toFixed(2)}
-              </div>
-              <button
-                onClick={() => handleAdd(b)}
-                className="bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-700"
-              >
-                Add
-              </button>
-            </li>
-          );
-        })}
+              Add
+            </button>
+          </li>
+        ))}
       </ul>
 
       {list.length === 0 && (
