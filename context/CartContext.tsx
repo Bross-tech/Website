@@ -4,13 +4,13 @@ import type { Bundle } from "@/components/Bundles";
 
 type CartItem = {
   bundle: Bundle;
-  price: number;       // ✅ final price (based on role)
   recipient: string;
+  price: number; // ✅ add price field
 };
 
 type CartContextType = {
   items: CartItem[];
-  addToCart: (bundle: Bundle, price: number, recipient: string) => void;
+  addToCart: (bundle: Bundle, recipient: string, price: number) => void;
   removeFromCart: (index: number) => void;
   clearCart: () => void;
   isOpen: boolean;
@@ -23,8 +23,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  const addToCart = (bundle: Bundle, price: number, recipient: string) => {
-    setItems((prev) => [...prev, { bundle, price, recipient }]);
+  const addToCart = (bundle: Bundle, recipient: string, price: number) => {
+    setItems((prev) => [...prev, { bundle, recipient, price }]);
     setIsOpen(true); // auto-open cart when adding item
   };
 
