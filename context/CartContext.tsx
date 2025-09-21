@@ -1,11 +1,12 @@
-// context/CartContext.tsx
+"use client";
+
 import { createContext, useContext, useState, ReactNode } from "react";
 import type { Bundle } from "@/components/Bundles";
 
 type CartItem = {
   bundle: Bundle;
   recipient: string;
-  price: number; // ✅ final role-based price
+  price: number;
 };
 
 type CartContextType = {
