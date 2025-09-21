@@ -1,18 +1,20 @@
 // components/CartWidget.tsx
+"use client";
+
 import { useCart } from "@/context/CartContext";
 
 export default function CartWidget() {
   const { items, removeFromCart, clearCart, isOpen, toggleCart } = useCart();
 
-  // ✅ total now comes from item.price (not bundle.priceGhs)
-  const total = items.reduce((sum, c) => sum + c.price, 0);
+  const total = items.reduce((sum, c) => sum + Number(c.price ?? 0), 0);
 
   return (
-    <div className="fixed bottom-6 right-6">
+    <div className="fixed bottom-6 right-6 z-50">
       {/* Floating button to open/close */}
       <button
         onClick={toggleCart}
         className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full shadow-lg"
+        aria-label="Open cart"
       >
         🛒 {items.length}
       </button>
@@ -30,15 +32,21 @@ export default function CartWidget() {
                   key={i}
                   className="flex justify-between items-center text-sm border-b pb-1"
                 >
-                  <span>
-                    {c.bundle.network} {c.bundle.size} → {c.recipient}
-                  </span>
+                  <div>
+                    <div>
+                      {c.bundle.network} {c.bundle.size}
+                    </div>
+                    <div className="text-xs text-gray-500">To: {c.recipient}</div>
+                  </div>
+
                   <div className="flex gap-2 items-center">
-                    {/* ✅ use c.price instead of c.bundle.priceGhs */}
-                    <span className="font-semibold">GHS {c.price}</span>
+                    <span className="font-semibold">
+                      GHS {Number(c.price ?? 0).toFixed(2)}
+                    </span>
                     <button
                       onClick={() => removeFromCart(i)}
                       className="text-red-500 hover:text-red-700"
+                      aria-label={`Remove item ${i + 1}`}
                     >
                       ✕
                     </button>
