@@ -1,19 +1,26 @@
-// pages/dashboard.tsx
+"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { supabase } from "../lib/supabaseClient";
-import Bundles from "../components/Bundles";
-import CartWidget from "../components/CartWidget";   // ✅ fixed import
+import { supabase } from "@/lib/supabaseClient";
+import Bundles from "@/components/Bundles";
+import CartWidget from "@/components/CartWidget";
 
 export default function Dashboard() {
   const [wallet, setWallet] = useState<number>(0);
   const [role, setRole] = useState<"customer" | "agent">("customer");
-  const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, delivered: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    processing: 0,
+    delivered: 0,
+  });
   const [fullName, setFullName] = useState("");
   const [mobile, setMobile] = useState("");
   const [location, setLocation] = useState("");
   const [dob, setDob] = useState("");
   const [loading, setLoading] = useState(true);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -25,17 +32,21 @@ export default function Dashboard() {
         return;
       }
 
+      // ✅ fetch role + wallet
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role,wallet")
+        .select("role, wallet")
         .eq("id", user.id)
         .single();
 
       setWallet(profile?.wallet || 0);
       setRole(profile?.role === "agent" ? "agent" : "customer");
 
-      // fetch order stats
-      const { data: orders } = await supabase.from("orders").select("status");
+      // ✅ fetch order stats
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("status");
+
       if (orders) {
         setStats({
           total: orders.length,
@@ -47,6 +58,7 @@ export default function Dashboard() {
 
       setLoading(false);
     };
+
     fetchProfile();
   }, [router]);
 
@@ -64,7 +76,10 @@ export default function Dashboard() {
       if (!user) return alert("Please login");
 
       await supabase.from("approvals").insert([
-        { user_id: user.id, description: `AFA reg for ${fullName} (${mobile})` },
+        {
+          user_id: user.id,
+          description: `AFA reg for ${fullName} (${mobile})`,
+        },
       ]);
 
       alert("AFA application submitted. Admin will review.");
@@ -115,7 +130,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Bundles */}
+      {/* Bundles (with role-based pricing) */}
       <Bundles role={role} />
 
       {/* AFA Registration */}
@@ -156,7 +171,7 @@ export default function Dashboard() {
       </div>
 
       {/* Floating Cart */}
-      <CartWidget />   {/* ✅ replaced old <Cart /> */}
+      <CartWidget />
     </div>
   );
-      }
+          }
