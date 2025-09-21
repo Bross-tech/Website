@@ -7,6 +7,12 @@ export default function CartWidget() {
 
   const total = items.reduce((sum, c) => sum + Number(c.price ?? 0), 0);
 
+  const handleClear = () => {
+    if (confirm("Are you sure you want to clear the cart?")) {
+      clearCart();
+    }
+  };
+
   return (
     <div className="fixed bottom-6 right-6 z-50">
       <button
@@ -23,7 +29,7 @@ export default function CartWidget() {
           {items.length === 0 ? (
             <p className="text-gray-500">Cart is empty.</p>
           ) : (
-            <ul className="space-y-2 max-h-40 overflow-y-auto">
+            <ul className="space-y-2 max-h-60 overflow-y-auto">
               {items.map((c, i) => (
                 <li
                   key={i}
@@ -58,7 +64,7 @@ export default function CartWidget() {
 
           <div className="flex gap-2 mt-4">
             <button
-              onClick={clearCart}
+              onClick={handleClear}
               className="flex-1 bg-gray-300 hover:bg-gray-400 text-black px-3 py-1 rounded"
             >
               Clear
@@ -67,7 +73,7 @@ export default function CartWidget() {
               onClick={() => alert("Checkout not implemented yet")}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded"
             >
-              Checkout
+              Checkout ({items.length})
             </button>
           </div>
         </div>
