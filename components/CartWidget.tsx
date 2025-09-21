@@ -4,7 +4,8 @@ import { useCart } from "@/context/CartContext";
 export default function CartWidget() {
   const { items, removeFromCart, clearCart, isOpen, toggleCart } = useCart();
 
-  const total = items.reduce((sum, c) => sum + c.bundle.priceGhs, 0);
+  // ✅ total now comes from item.price (not bundle.priceGhs)
+  const total = items.reduce((sum, c) => sum + c.price, 0);
 
   return (
     <div className="fixed bottom-6 right-6">
@@ -33,9 +34,8 @@ export default function CartWidget() {
                     {c.bundle.network} {c.bundle.size} → {c.recipient}
                   </span>
                   <div className="flex gap-2 items-center">
-                    <span className="font-semibold">
-                      GHS {c.bundle.priceGhs}
-                    </span>
+                    {/* ✅ use c.price instead of c.bundle.priceGhs */}
+                    <span className="font-semibold">GHS {c.price}</span>
                     <button
                       onClick={() => removeFromCart(i)}
                       className="text-red-500 hover:text-red-700"
