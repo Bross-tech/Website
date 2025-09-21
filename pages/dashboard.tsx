@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation"; // ✅ fixed import
 import { supabase } from "@/lib/supabaseClient";
 import Bundles from "@/components/Bundles";
 import CartWidget from "@/components/CartWidget";
 
 export default function Dashboard() {
   const [wallet, setWallet] = useState<number>(0);
-  const [role, setRole] = useState<"customer" | "agent">("customer");
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -32,15 +31,14 @@ export default function Dashboard() {
         return;
       }
 
-      // ✅ fetch role + wallet
+      // ✅ fetch wallet (role not needed here anymore)
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, wallet")
+        .select("wallet")
         .eq("id", user.id)
         .single();
 
       setWallet(profile?.wallet || 0);
-      setRole(profile?.role === "agent" ? "agent" : "customer");
 
       // ✅ fetch order stats
       const { data: orders } = await supabase
@@ -130,8 +128,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Bundles (with role-based pricing) */}
-      <Bundles role={role} />
+      {/* Bundles (CartContext handles role) */}
+      <Bundles />
 
       {/* AFA Registration */}
       <div className="bg-white shadow-md p-4 rounded-lg">
@@ -174,4 +172,4 @@ export default function Dashboard() {
       <CartWidget />
     </div>
   );
-}
+        }
