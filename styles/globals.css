@@ -4,7 +4,11 @@ html, body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
     Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
-  background: #f9fafb;
+
+  /* ✅ Background image everywhere */
+  background: url("/bg.jpg") no-repeat center center fixed;
+  background-size: cover;
+
   color: #111827;
 }
 
@@ -15,4 +19,11 @@ html, body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* ✅ Keep cards/containers readable */
+.container, .card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
 }
