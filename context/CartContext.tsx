@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 import type { Bundle } from "@/components/Bundles";
-import { useAuth } from "@/context/AuthContext";  // ✅ get role from AuthContext
+import { useAuth } from "@/context/AuthContext"; // ✅ get role from AuthContext
 
 type CartItem = {
   bundle: Bundle;
@@ -12,7 +12,7 @@ type CartItem = {
 
 type CartContextType = {
   items: CartItem[];
-  addToCart: (bundle: Bundle, recipient: string) => void; // ✅ no price param needed
+  addToCart: (bundle: Bundle, recipient: string) => void;
   removeFromCart: (index: number) => void;
   clearCart: () => void;
   isOpen: boolean;
@@ -22,19 +22,16 @@ type CartContextType = {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { role } = useAuth();  // ✅ use logged-in role
+  const { role } = useAuth(); // ✅ get current user's role
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
   const addToCart = (bundle: Bundle, recipient: string) => {
-    // ✅ role-based pricing
-    let price = bundle.priceGhs;
-    if (role === "agent" && bundle.agentPriceGhs) {
-      price = bundle.agentPriceGhs;
-    }
+    // ✅ determine price based on role
+    const price = role === "agent" ? bundle.priceAgent : bundle.priceCustomer;
 
     setItems((prev) => [...prev, { bundle, recipient, price }]);
-    setIsOpen(true);
+    setIsOpen(true); // auto-open cart
   };
 
   const removeFromCart = (index: number) => {
