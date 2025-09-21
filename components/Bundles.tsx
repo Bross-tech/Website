@@ -1,4 +1,5 @@
-// components/Bundles.tsx
+"use client";
+
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabaseClient";
@@ -7,8 +8,8 @@ export type Bundle = {
   id: string;
   network: string;
   size: string;
-  priceAgent: number;     // ✅ price for agents
-  priceCustomer: number;  // ✅ price for customers
+  priceAgent: number;
+  priceCustomer: number;
 };
 
 export default function Bundles({ role }: { role: "agent" | "customer" }) {
@@ -49,8 +50,11 @@ export default function Bundles({ role }: { role: "agent" | "customer" }) {
   const handleAdd = (bundle: Bundle) => {
     const recipient = prompt("Enter recipient number (include country code)");
     if (!recipient) return;
-    const price = role === "agent" ? bundle.priceAgent : bundle.priceCustomer;
-    addToCart(bundle, recipient, price); // ✅ pass price
+
+    const price =
+      role === "agent" ? bundle.priceAgent : bundle.priceCustomer;
+
+    addToCart(bundle, recipient, price);
     alert("Added to cart!");
   };
 
@@ -82,7 +86,8 @@ export default function Bundles({ role }: { role: "agent" | "customer" }) {
 
       <ul className="grid gap-3">
         {list.map((b) => {
-          const price = role === "agent" ? b.priceAgent : b.priceCustomer;
+          const price =
+            role === "agent" ? b.priceAgent : b.priceCustomer;
           return (
             <li
               key={b.id}
