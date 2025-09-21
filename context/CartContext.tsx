@@ -5,7 +5,7 @@ import type { Bundle } from "@/components/Bundles";
 type CartItem = {
   bundle: Bundle;
   recipient: string;
-  price: number; // ✅ add price field
+  price: number; // ✅ final role-based price
 };
 
 type CartContextType = {
@@ -25,7 +25,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addToCart = (bundle: Bundle, recipient: string, price: number) => {
     setItems((prev) => [...prev, { bundle, recipient, price }]);
-    setIsOpen(true); // auto-open cart when adding item
+    setIsOpen(true);
   };
 
   const removeFromCart = (index: number) => {
