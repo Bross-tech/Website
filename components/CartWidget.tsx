@@ -1,6 +1,7 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function CartWidget() {
   const { items, removeFromCart, clearCart, isOpen, toggleCart } = useCart();
@@ -10,6 +11,41 @@ export default function CartWidget() {
   const handleClear = () => {
     if (confirm("Are you sure you want to clear the cart?")) {
       clearCart();
+    }
+  };
+
+  const handleCheckout = async () => {
+    try {
+      // ✅ Ensure user is logged in
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth?.user;
+      if (!user) {
+        alert("Please log in to checkout.");
+        return;
+      }
+
+      // ✅ Insert each cart item into orders
+      const { error } = await supabase.from("orders").insert(
+        items.map((c) => ({
+          user_id: user.id,
+          bundle_id: c.bundle.id,
+          recipient: c.recipient,
+          price: c.price,
+          status: "pending",
+        }))
+      );
+
+      if (error) {
+        console.error("Checkout error:", error.message);
+        alert("Error saving order: " + error.message);
+        return;
+      }
+
+      alert("✅ Order placed successfully!");
+      clearCart();
+    } catch (err: any) {
+      console.error(err);
+      alert("Unexpected error: " + err.message);
     }
   };
 
@@ -70,8 +106,9 @@ export default function CartWidget() {
               Clear
             </button>
             <button
-              onClick={() => alert("Checkout not implemented yet")}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded"
+              onClick={handleCheckout}
+              disabled={items.length === 0}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded disabled:opacity-50"
             >
               Checkout ({items.length})
             </button>
@@ -80,4 +117,4 @@ export default function CartWidget() {
       )}
     </div>
   );
-}
+  }
