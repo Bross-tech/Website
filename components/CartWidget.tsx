@@ -1,4 +1,3 @@
-// components/CartWidget.tsx
 "use client";
 
 import { useCart } from "@/context/CartContext";
@@ -10,11 +9,9 @@ export default function CartWidget() {
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
-      {/* Floating button to open/close */}
       <button
         onClick={toggleCart}
         className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full shadow-lg"
-        aria-label="Open cart"
       >
         🛒 {items.length}
       </button>
@@ -38,15 +35,13 @@ export default function CartWidget() {
                     </div>
                     <div className="text-xs text-gray-500">To: {c.recipient}</div>
                   </div>
-
                   <div className="flex gap-2 items-center">
                     <span className="font-semibold">
-                      GHS {Number(c.price ?? 0).toFixed(2)}
+                      GHS {c.price.toFixed(2)}
                     </span>
                     <button
                       onClick={() => removeFromCart(i)}
                       className="text-red-500 hover:text-red-700"
-                      aria-label={`Remove item ${i + 1}`}
                     >
                       ✕
                     </button>
