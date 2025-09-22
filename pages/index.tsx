@@ -4,14 +4,10 @@ import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Bundles from "@/components/Bundles";
 import CartWidget from "@/components/CartWidget";
-import { CartProvider } from "@/contexts/CartContext";
-import { createBrowserSupabaseClient } from "@supabase/ssr";
+import { CartProvider } from "@/context/CartContext"; // make sure this is singular 'context'
+import { supabase } from "@/lib/supabaseClient"; // use the browser-safe client
 
 export default function HomePage() {
-  // Create Supabase client
-  const supabase = createBrowserSupabaseClient();
-
-  // Track user state
   const [user, setUser] = useState<any>(null);
 
   // Fetch the current user on mount
