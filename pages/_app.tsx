@@ -8,11 +8,12 @@ import "@/styles/globals.css";
 
 // Inner component to consume AuthContext
 function AppContent({ Component, pageProps }: AppProps) {
-  const { user } = useAuth(); // get the user from AuthContext
+  const { userId, role, wallet } = useAuth(); // ✅ correct fields
 
   return (
     <CartProvider>
-      <Navbar user={user} />
+      {/* ✅ Pass userId (or role) to Navbar instead of user */}
+      <Navbar userId={userId} role={role} wallet={wallet} />
       <Component {...pageProps} />
       <CartWidget />
     </CartProvider>
