@@ -3,10 +3,12 @@
 import { useCart } from "@/context/CartContext";
 
 interface NavbarProps {
-  user: any; // Replace 'any' with proper Supabase User type if desired
+  userId: string | null;
+  role: "customer" | "agent" | "admin" | null;
+  wallet: number;
 }
 
-export default function Navbar({ user }: NavbarProps) {
+export default function Navbar({ userId, role, wallet }: NavbarProps) {
   const { items, toggleCart } = useCart();
 
   return (
@@ -23,11 +25,18 @@ export default function Navbar({ user }: NavbarProps) {
       <h1 style={{ margin: 0 }}>Bundle Shop</h1>
 
       <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-        {user ? (
-          <span>Welcome, {user.email}</span>
+        {userId ? (
+          <>
+            <span>
+              Role: <strong>{role}</strong>
+            </span>
+            <span>
+              Wallet: <strong>GHS {wallet.toFixed(2)}</strong>
+            </span>
+          </>
         ) : (
           <button
-            onClick={() => window.location.href = "/login"}
+            onClick={() => (window.location.href = "/login")}
             style={{
               background: "#2563eb",
               color: "white",
