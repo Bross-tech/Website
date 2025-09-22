@@ -6,8 +6,9 @@ import Navbar from "@/components/Navbar";
 import CartWidget from "@/components/CartWidget";
 import "@/styles/globals.css";
 
-function AppWrapper({ Component, pageProps }: AppProps) {
-  const { user } = useAuth(); // Get the current user from AuthContext
+// Inner component to access AuthContext
+function AppContent({ Component, pageProps }: AppProps) {
+  const { user } = useAuth(); // ✅ get current user
 
   return (
     <CartProvider>
@@ -21,7 +22,7 @@ function AppWrapper({ Component, pageProps }: AppProps) {
 export default function MyApp(props: AppProps) {
   return (
     <AuthProvider>
-      <AppWrapper {...props} />
+      <AppContent {...props} />
     </AuthProvider>
   );
-      }
+}
