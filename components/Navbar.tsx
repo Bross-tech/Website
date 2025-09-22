@@ -1,6 +1,6 @@
 "use client";
 
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/context/CartContext";
 
 interface NavbarProps {
   user: any; // Replace 'any' with proper Supabase User type if desired

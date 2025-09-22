@@ -7,7 +7,7 @@ mkdir -p components
 cat > components/Navbar.tsx << 'EOF'
 "use client";
 
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/context/CartContext";
 
 export default function Navbar() {
   const { cart, toggleCart } = useCart();
@@ -48,7 +48,7 @@ cat > components/Bundles.tsx << 'EOF'
 "use client";
 
 import { useState } from "react";
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/context/CartContext";
 
 export type Bundle = { id: string; network: string; size: string; priceGhs: number };
 
@@ -125,7 +125,7 @@ EOF
 cat > components/CartWidget.tsx << 'EOF'
 "use client";
 
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/context/CartContext";
 import { useEffect } from "react";
 
 export default function CartWidget() {
@@ -338,7 +338,7 @@ cat > pages/index.tsx << 'EOF'
 import Navbar from "@/components/Navbar";
 import Bundles from "@/components/Bundles";
 import CartWidget from "@/components/CartWidget";
-import { CartProvider } from "@/contexts/CartContext";
+import { CartProvider } from "@/context/CartContext";
 
 export default function HomePage() {
   return (
