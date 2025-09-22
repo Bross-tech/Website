@@ -1,19 +1,27 @@
 // pages/_app.tsx
 import type { AppProps } from "next/app";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/Navbar";
 import CartWidget from "@/components/CartWidget";
 import "@/styles/globals.css";
 
-export default function MyApp({ Component, pageProps }: AppProps) {
+function AppWrapper({ Component, pageProps }: AppProps) {
+  const { user } = useAuth(); // Get the current user from AuthContext
+
   return (
-    <AuthProvider>
-      <CartProvider>
-        <Navbar />
-        <Component {...pageProps} />
-        <CartWidget />
-      </CartProvider>
-    </AuthProvider>
+    <CartProvider>
+      <Navbar user={user} />
+      <Component {...pageProps} />
+      <CartWidget />
+    </CartProvider>
   );
 }
+
+export default function MyApp(props: AppProps) {
+  return (
+    <AuthProvider>
+      <AppWrapper {...props} />
+    </AuthProvider>
+  );
+      }
