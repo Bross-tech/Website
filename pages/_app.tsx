@@ -1,3 +1,4 @@
+// pages/_app.tsx
 import type { AppProps } from "next/app";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
@@ -5,9 +6,9 @@ import Navbar from "@/components/Navbar";
 import CartWidget from "@/components/CartWidget";
 import "@/styles/globals.css";
 
-// Inner component to access AuthContext
+// Inner component to consume AuthContext
 function AppContent({ Component, pageProps }: AppProps) {
-  const { user } = useAuth(); // get current user
+  const { user } = useAuth(); // get the user from AuthContext
 
   return (
     <CartProvider>
