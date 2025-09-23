@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { supabaseAdmin } from "../../lib/supabaseClient";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY || "";
 
@@ -7,10 +6,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "POST") {
     const { amount, email } = req.body;
     if (!amount || !email) {
-      return res.status(400).json({ error: "missing" });
+      return res.status(400).json({ error: "Missing amount or email" });
     }
 
     try {
+      // Initialize payment on Paystack
       const response = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
@@ -25,6 +25,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       const data = await response.json();
+
+      if (!data.status) {
+        return res.status(400).json({ error: "Paystack initialization failed", details: data });
+      }
+
       return res.status(200).json(data);
     } catch (err: any) {
       console.error("Paystack init error:", err);
