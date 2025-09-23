@@ -1,6 +1,7 @@
 // pages/api/paystack/verify.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createSupabaseAdminClient } from "../../../lib/supabaseClient";
+import { notifyUserAndAdmin } from "../../../lib/smsClient"; // ✅ new import
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY || "";
 
@@ -17,9 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // 1️⃣ Verify payment with Paystack
     const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-      headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET}`,
-      },
+      headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` },
     });
 
     const result = await response.json();
@@ -29,11 +28,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 2️⃣ Extract user + amount
     const email = result.data.customer.email;
-    const paidAmount = result.data.amount / 100; // kobo → naira/cedis
-
+    const paidAmount = result.data.amount / 100; // convert from kobo/pesewas
     const supabaseAdmin = createSupabaseAdminClient();
 
-    // 3️⃣ Check if transaction already processed
+    // 3️⃣ Prevent double-credit
     const { data: existing } = await supabaseAdmin
       .from("transactions")
       .select("id")
@@ -47,10 +45,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // 4️⃣ Fetch current wallet
+    // 4️⃣ Get user profile (wallet + phone for SMS)
     const { data: profile, error: fetchError } = await supabaseAdmin
       .from("profiles")
-      .select("wallet")
+      .select("wallet, phone")
       .eq("email", email)
       .single();
 
@@ -60,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const newBalance = (profile.wallet || 0) + paidAmount;
 
-    // 5️⃣ Update wallet balance
+    // 5️⃣ Update wallet
     const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({ wallet: newBalance })
@@ -70,28 +68,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "Failed to update wallet" });
     }
 
-    // 6️⃣ Record transaction to prevent double-crediting
-    const { error: txError } = await supabaseAdmin
-      .from("transactions")
-      .insert([
-        {
-          reference,
-          email,
-          amount: paidAmount,
-          status: "success",
-        },
-      ]);
+    // 6️⃣ Record transaction
+    const { error: txError } = await supabaseAdmin.from("transactions").insert([
+      {
+        reference,
+        email,
+        amount: paidAmount,
+        status: "success",
+        created_at: new Date().toISOString(),
+      },
+    ]);
 
     if (txError) {
       console.error("Transaction log error:", txError);
     }
 
-    return res.status(200).json({
-      success: true,
-      email,
-      paidAmount,
-      newBalance,
-    });
+    // 7️⃣ Send SMS to user + admin
+    if (profile.phone) {
+      await notifyUserAndAdmin(
+        profile.phone,
+        `Deposit successful: GHS ${paidAmount}. New balance: GHS ${newBalance}`
+      );
+    }
+
+    return res.status(200).json({ success: true, email, paidAmount, newBalance });
   } catch (err) {
     console.error("Verification error:", err);
     return res.status(500).json({ error: "Internal server error" });
