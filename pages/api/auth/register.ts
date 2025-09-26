@@ -1,17 +1,19 @@
 // pages/api/auth/register.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createSupabaseAdminClient } from "@/lib/supabaseClient";
+import { supabaseAdmin } from "@/lib/supabaseClient";   // ✅ fixed import
 import { notifyUserAndAdmin } from "@/lib/smsClient";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
   const { email, phone } = req.body;
-  const supabaseAdmin = createSupabaseAdminClient();
 
   try {
     // Insert into profiles
-    const { error } = await supabaseAdmin.from("profiles").insert([{ email, phone, wallet: 0 }]);
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .insert([{ email, phone, wallet: 0 }]);
+
     if (error) throw error;
 
     // Send SMS
