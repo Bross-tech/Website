@@ -1,10 +1,10 @@
-// pages/_app.tsx
 import type { AppProps } from "next/app";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/Navbar";
 import CartWidget from "@/components/CartWidget";
-import { Toaster } from "react-hot-toast";  // ✅ toast provider
+import BottomNav from "@/components/BottomNav"; // ✅ import bottom nav
+import { Toaster } from "react-hot-toast";
 import "@/styles/globals.css";
 
 // Inner component to consume AuthContext
@@ -13,10 +13,18 @@ function AppContent({ Component, pageProps }: AppProps) {
 
   return (
     <CartProvider>
+      {/* Top navbar */}
       <Navbar userId={userId} role={role} wallet={wallet} />
-      <Component {...pageProps} />
+
+      {/* Main page content */}
+      <div className="pb-20"> {/* ✅ padding-bottom to avoid overlap with BottomNav */}
+        <Component {...pageProps} />
+      </div>
+
+      {/* Floating components */}
       <CartWidget />
-      <Toaster position="top-right" reverseOrder={false} /> {/* ✅ toast available */}
+      <BottomNav /> {/* ✅ always visible on mobile */}
+      <Toaster position="top-right" reverseOrder={false} />
     </CartProvider>
   );
 }
