@@ -1,6 +1,10 @@
+// pages/afa-registration.tsx
+"use client";
+
 import { useState } from "react";
-import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
+import { supabase } from "@/lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function AfaPage() {
   const [fullName, setFullName] = useState("");
@@ -11,105 +15,111 @@ export default function AfaPage() {
   const router = useRouter();
 
   const handleRegister = async () => {
+    if (!fullName || !mobile || !location || !dob) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+
     setProcessing(true);
 
-    // get user
-    const { data } = await supabase.auth.getUser();
-    const user = data.user;
+    // 1️⃣ Get current user
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+
     if (!user) {
-      alert("Please login.");
+      toast.error("You must be logged in.");
       setProcessing(false);
       return;
     }
 
-    // get profile
-    const { data: profile } = await supabase
+    // 2️⃣ Fetch profile
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role,wallet")
       .eq("id", user.id)
       .single();
 
-    const role = profile?.role ?? "user";
+    if (profileError || !profile) {
+      toast.error("Failed to fetch profile.");
+      setProcessing(false);
+      return;
+    }
+
+    const role = profile.role ?? "user";
     const fee = role === "agent" ? 6 : 8;
 
-    // check wallet balance
-    if (Number(profile?.wallet ?? 0) < fee) {
-      alert("Insufficient wallet balance. Please top-up.");
+    if ((profile.wallet ?? 0) < fee) {
+      toast.error("Insufficient wallet balance. Please top up.");
       setProcessing(false);
       return;
     }
 
     try {
-      // register record to 'approvals'
-      await supabase
-        .from("approvals")
-        .insert([{ description: `AFA reg for ${fullName} (${mobile})` }]);
+      // 3️⃣ Insert into approvals table
+      await supabase.from("approvals").insert([
+        { description: `AFA registration for ${fullName} (${mobile})` },
+      ]);
 
-      // reduce wallet via RPC
-      try {
-        await supabase.rpc("decrement_wallet", {
-          user_id_input: user.id,
-          amount_input: fee,
-        });
-      } catch (err) {
-        console.error("Wallet decrement failed:", err);
+      // 4️⃣ Deduct wallet via RPC
+      const { error: rpcError } = await supabase.rpc("decrement_wallet", {
+        user_id_input: user.id,
+        amount_input: fee,
+      });
+
+      if (rpcError) {
+        toast.error("Failed to deduct wallet balance.");
+        setProcessing(false);
+        return;
       }
 
-      alert("AFA application submitted. Admin will review.");
+      toast.success("AFA application submitted. Admin will review.");
       router.push("/dashboard");
     } catch (err: any) {
-      alert("Error: " + (err.message || err));
+      console.error(err);
+      toast.error("Something went wrong. Try again.");
     } finally {
       setProcessing(false);
     }
   };
 
   return (
-    <div className="container">
-      <div className="card" style={{ maxWidth: 520, margin: "0 auto" }}>
-        <h2>AFA Registration</h2>
-        <div style={{ marginBottom: 8 }}>
-          <input
-            className="input"
-            placeholder="Full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
-        </div>
-        <div style={{ marginBottom: 8 }}>
-          <input
-            className="input"
-            placeholder="Mobile number"
-            value={mobile}
-            onChange={(e) => setMobile(e.target.value)}
-          />
-        </div>
-        <div style={{ marginBottom: 8 }}>
-          <input
-            className="input"
-            placeholder="Location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
-        </div>
-        <div style={{ marginBottom: 8 }}>
-          <input
-            className="input"
-            type="date"
-            value={dob}
-            onChange={(e) => setDob(e.target.value)}
-          />
-        </div>
-        <div>
-          <button
-            className="btn"
-            onClick={handleRegister}
-            disabled={processing}
-          >
-            {processing ? "Processing..." : "Register & Pay via wallet"}
-          </button>
-        </div>
+    <div className="container mx-auto p-4">
+      <div className="max-w-md mx-auto bg-white shadow-md rounded-md p-6">
+        <h2 className="text-xl font-semibold mb-4">AFA Registration</h2>
+
+        <input
+          className="input mb-3"
+          placeholder="Full Name"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
+        <input
+          className="input mb-3"
+          placeholder="Mobile Number"
+          value={mobile}
+          onChange={(e) => setMobile(e.target.value)}
+        />
+        <input
+          className="input mb-3"
+          placeholder="Location"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+        />
+        <input
+          className="input mb-4"
+          type="date"
+          value={dob}
+          onChange={(e) => setDob(e.target.value)}
+        />
+
+        <button
+          className="btn w-full"
+          onClick={handleRegister}
+          disabled={processing}
+        >
+          {processing ? "Processing..." : `Register & Pay GHS ${profile?.role === "agent" ? 6 : 8}`}
+        </button>
       </div>
     </div>
   );
-}
+                                                                }
