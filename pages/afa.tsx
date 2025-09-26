@@ -1,82 +1,77 @@
-// pages/afa-registration.tsx
-"use client";
-
 import { useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
-import { supabase } from "@/lib/supabaseClient";
-import toast from "react-hot-toast";
 
 export default function AfaPage() {
   const [fullName, setFullName] = useState("");
   const [mobile, setMobile] = useState("");
   const [location, setLocation] = useState("");
   const [dob, setDob] = useState("");
+  const [nationalId, setNationalId] = useState("");
   const [processing, setProcessing] = useState(false);
   const router = useRouter();
 
   const handleRegister = async () => {
-    if (!fullName || !mobile || !location || !dob) {
-      toast.error("Please fill in all fields.");
+    // ✅ basic validation
+    if (!fullName || !mobile || !location || !dob || !nationalId) {
+      alert("Please fill in all fields.");
       return;
     }
 
     setProcessing(true);
 
-    // 1️⃣ Get current user
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-
+    // get user
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
     if (!user) {
-      toast.error("You must be logged in.");
+      alert("Please login.");
       setProcessing(false);
       return;
     }
 
-    // 2️⃣ Fetch profile
-    const { data: profile, error: profileError } = await supabase
+    // get profile
+    const { data: profile } = await supabase
       .from("profiles")
       .select("role,wallet")
       .eq("id", user.id)
       .single();
 
-    if (profileError || !profile) {
-      toast.error("Failed to fetch profile.");
-      setProcessing(false);
-      return;
-    }
-
-    const role = profile.role ?? "user";
+    const role = profile?.role ?? "user";
     const fee = role === "agent" ? 6 : 8;
 
-    if ((profile.wallet ?? 0) < fee) {
-      toast.error("Insufficient wallet balance. Please top up.");
+    // check wallet balance
+    if (Number(profile?.wallet ?? 0) < fee) {
+      alert("Insufficient wallet balance. Please top-up.");
       setProcessing(false);
       return;
     }
 
     try {
-      // 3️⃣ Insert into approvals table
-      await supabase.from("approvals").insert([
-        { description: `AFA registration for ${fullName} (${mobile})` },
-      ]);
+      // register record to 'approvals'
+      await supabase.from("approvals").insert([{
+        description: `AFA reg for ${fullName} (${mobile})`,
+        full_name: fullName,
+        mobile,
+        location,
+        dob,
+        national_id: nationalId,
+        user_id: user.id
+      }]);
 
-      // 4️⃣ Deduct wallet via RPC
-      const { error: rpcError } = await supabase.rpc("decrement_wallet", {
-        user_id_input: user.id,
-        amount_input: fee,
-      });
-
-      if (rpcError) {
-        toast.error("Failed to deduct wallet balance.");
-        setProcessing(false);
-        return;
+      // reduce wallet via RPC
+      try {
+        await supabase.rpc("decrement_wallet", {
+          user_id_input: user.id,
+          amount_input: fee,
+        });
+      } catch (err) {
+        console.error("Wallet decrement failed:", err);
       }
 
-      toast.success("AFA application submitted. Admin will review.");
+      alert("AFA application submitted. Admin will review.");
       router.push("/dashboard");
     } catch (err: any) {
-      console.error(err);
-      toast.error("Something went wrong. Try again.");
+      alert("Error: " + (err.message || err));
     } finally {
       setProcessing(false);
     }
@@ -84,32 +79,43 @@ export default function AfaPage() {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="max-w-md mx-auto bg-white shadow-md rounded-md p-6">
+      <div className="card max-w-md mx-auto bg-white shadow-md rounded-md p-6">
         <h2 className="text-xl font-semibold mb-4">AFA Registration</h2>
 
         <input
           className="input mb-3"
-          placeholder="Full Name"
+          placeholder="Full name"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
         />
+
         <input
           className="input mb-3"
-          placeholder="Mobile Number"
+          placeholder="Mobile number"
           value={mobile}
           onChange={(e) => setMobile(e.target.value)}
         />
+
         <input
           className="input mb-3"
           placeholder="Location"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
         />
+
         <input
-          className="input mb-4"
+          className="input mb-3"
           type="date"
+          placeholder="Date of Birth"
           value={dob}
           onChange={(e) => setDob(e.target.value)}
+        />
+
+        <input
+          className="input mb-4"
+          placeholder="National ID / Voter ID"
+          value={nationalId}
+          onChange={(e) => setNationalId(e.target.value)}
         />
 
         <button
@@ -117,9 +123,9 @@ export default function AfaPage() {
           onClick={handleRegister}
           disabled={processing}
         >
-          {processing ? "Processing..." : `Register & Pay GHS ${profile?.role === "agent" ? 6 : 8}`}
+          {processing ? "Processing..." : "Register & Pay via wallet"}
         </button>
       </div>
     </div>
   );
-                                                                }
+}
