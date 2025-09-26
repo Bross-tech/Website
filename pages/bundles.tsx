@@ -9,6 +9,7 @@ import Bundles from "@/components/Bundles";
 import Navbar from "@/components/Navbar";
 import WhatsAppSupport from "@/components/WhatsAppSupport";
 import CartWidget from "@/components/CartWidget";
+import BottomNav from "@/components/BottomNav"; // ✅ imported
 import toast from "react-hot-toast";
 
 export default function BundlesPage() {
@@ -22,10 +23,7 @@ export default function BundlesPage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (userError) {
         console.error("Error fetching user:", userError);
@@ -34,7 +32,7 @@ export default function BundlesPage() {
       }
 
       if (!user) {
-        toast.error("You must log in to continue."); // ✅ notify
+        toast.error("You must log in to continue."); // notify
         router.push("/login");
         return;
       }
@@ -85,6 +83,9 @@ export default function BundlesPage() {
         <CartWidget />
         <WhatsAppSupport />
       </main>
+
+      {/* ✅ BottomNav fixed at bottom */}
+      <BottomNav />
     </>
   );
 }
