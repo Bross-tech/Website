@@ -26,13 +26,20 @@ const BottomNav = () => {
         return (
           <button
             key={item.name}
+            aria-label={item.label}
             onClick={() => router.push(item.link)}
-            className={`flex flex-col items-center transition-colors duration-200 ${
-              isActive ? "text-yellow-400" : "text-white hover:text-gray-300"
+            className={`flex flex-col items-center transition-colors duration-200 transform ${
+              isActive ? "text-yellow-400 scale-110" : "text-white hover:text-gray-300"
             }`}
           >
             {item.icon}
-            <span className="text-xs">{item.label}</span>
+            <span
+              className={`text-xs mt-1 transition-all duration-300 ease-in-out ${
+                isActive ? "opacity-100 max-h-6" : "opacity-0 max-h-0 overflow-hidden"
+              }`}
+            >
+              {item.label}
+            </span>
           </button>
         );
       })}
