@@ -1,7 +1,7 @@
 // pages/api/bundles/purchase.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createSupabaseAdminClient } from "../../../lib/supabaseClient";
-import { notifyUserAndAdmin } from "../../../lib/smsClient";
+import { supabaseAdmin } from "@/lib/supabaseClient";   // ✅ fixed import
+import { notifyUserAndAdmin } from "@/lib/smsClient";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -10,21 +10,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!email || !bundleId) return res.status(400).json({ error: "Missing fields" });
 
   try {
-    const supabaseAdmin = createSupabaseAdminClient();
+    // 1️⃣ Fetch bundle
+    const { data: bundle, error: bundleError } = await supabaseAdmin
+      .from("bundles")
+      .select("*")
+      .eq("id", bundleId)
+      .single();
 
-    const { data: bundle } = await supabaseAdmin.from("bundles").select("*").eq("id", bundleId).single();
-    if (!bundle) return res.status(400).json({ error: "Bundle not found" });
+    if (bundleError || !bundle) {
+      return res.status(400).json({ error: "Bundle not found" });
+    }
 
-    const { data: profile } = await supabaseAdmin.from("profiles").select("wallet, phone").eq("email", email).single();
-    if (!profile) return res.status(400).json({ error: "User not found" });
+    // 2️⃣ Fetch user profile
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("wallet, phone")
+      .eq("email", email)
+      .single();
 
-    if (profile.wallet < bundle.pricecustomer) return res.status(400).json({ error: "Insufficient funds" });
+    if (profileError || !profile) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    // 3️⃣ Check balance
+    if (profile.wallet < bundle.pricecustomer) {
+      return res.status(400).json({ error: "Insufficient funds" });
+    }
 
     const newBalance = profile.wallet - bundle.pricecustomer;
 
-    await supabaseAdmin.from("profiles").update({ wallet: newBalance }).eq("email", email);
+    // 4️⃣ Update wallet
+    const { error: updateError } = await supabaseAdmin
+      .from("profiles")
+      .update({ wallet: newBalance })
+      .eq("email", email);
 
-    // ✅ Send SMS
+    if (updateError) {
+      return res.status(500).json({ error: "Failed to update wallet" });
+    }
+
+    // 5️⃣ Send SMS
     if (profile.phone) {
       await notifyUserAndAdmin(
         profile.phone,
