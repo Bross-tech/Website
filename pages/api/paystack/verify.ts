@@ -1,7 +1,7 @@
 // pages/api/paystack/verify.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createSupabaseAdminClient } from "../../../lib/supabaseClient";
-import { notifyUserAndAdmin } from "../../../lib/smsClient"; // ✅ new import
+import { supabaseAdmin } from "../../../lib/supabaseClient";  // ✅ fixed import
+import { notifyUserAndAdmin } from "../../../lib/smsClient"; // ✅ sms import
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY || "";
 
@@ -29,7 +29,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 2️⃣ Extract user + amount
     const email = result.data.customer.email;
     const paidAmount = result.data.amount / 100; // convert from kobo/pesewas
-    const supabaseAdmin = createSupabaseAdminClient();
 
     // 3️⃣ Prevent double-credit
     const { data: existing } = await supabaseAdmin
