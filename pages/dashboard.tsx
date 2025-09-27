@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; // ✅ fixed import
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import Bundles from "@/components/Bundles";
 import CartWidget from "@/components/CartWidget";
@@ -14,10 +14,6 @@ export default function Dashboard() {
     processing: 0,
     delivered: 0,
   });
-  const [fullName, setFullName] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [location, setLocation] = useState("");
-  const [dob, setDob] = useState("");
   const [loading, setLoading] = useState(true);
 
   const router = useRouter();
@@ -31,7 +27,7 @@ export default function Dashboard() {
         return;
       }
 
-      // ✅ fetch wallet (role not needed here anymore)
+      // fetch wallet
       const { data: profile } = await supabase
         .from("profiles")
         .select("wallet")
@@ -40,11 +36,8 @@ export default function Dashboard() {
 
       setWallet(profile?.wallet || 0);
 
-      // ✅ fetch order stats
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("status");
-
+      // fetch order stats
+      const { data: orders } = await supabase.from("orders").select("status");
       if (orders) {
         setStats({
           total: orders.length,
@@ -65,29 +58,6 @@ export default function Dashboard() {
     if (!amount) return;
     alert("Redirect to Paystack with amount " + amount);
     // TODO: Implement Paystack deposit flow
-  };
-
-  const handleAfaRegister = async () => {
-    try {
-      const { data: auth } = await supabase.auth.getUser();
-      const user = auth?.user;
-      if (!user) return alert("Please login");
-
-      await supabase.from("approvals").insert([
-        {
-          user_id: user.id,
-          description: `AFA reg for ${fullName} (${mobile})`,
-        },
-      ]);
-
-      alert("AFA application submitted. Admin will review.");
-      setFullName("");
-      setMobile("");
-      setLocation("");
-      setDob("");
-    } catch (err: any) {
-      alert("Error: " + err.message);
-    }
   };
 
   if (loading) return <p className="p-4">Loading dashboard...</p>;
@@ -128,45 +98,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Bundles (CartContext handles role) */}
+      {/* Bundles */}
       <Bundles />
-
-      {/* AFA Registration */}
-      <div className="bg-white shadow-md p-4 rounded-lg">
-        <h2 className="text-xl font-bold mb-3">AFA Registration</h2>
-        <input
-          className="border p-2 w-full mb-2 rounded"
-          placeholder="Full Name"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-        />
-        <input
-          className="border p-2 w-full mb-2 rounded"
-          placeholder="Mobile Number"
-          value={mobile}
-          onChange={(e) => setMobile(e.target.value)}
-        />
-        <input
-          className="border p-2 w-full mb-2 rounded"
-          placeholder="Location"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-        />
-        <input
-          type="date"
-          className="border p-2 w-full mb-2 rounded"
-          value={dob}
-          onChange={(e) => setDob(e.target.value)}
-        />
-        <div className="text-right">
-          <button
-            className="bg-blue-500 text-white px-4 py-2 rounded"
-            onClick={handleAfaRegister}
-          >
-            Register
-          </button>
-        </div>
-      </div>
 
       {/* Floating Cart */}
       <CartWidget />
