@@ -3,8 +3,30 @@
 import React from "react";
 import { useRouter } from "next/router";
 import { RiDashboardLine } from "react-icons/ri";
-import { FaHistory, FaCediSign } from "react-icons/fa";
+import { FaHistory } from "react-icons/fa";
 import { MdFamilyRestroom, MdManageAccounts } from "react-icons/md";
+
+const CediIcon = ({ size = 24 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className="inline-block"
+  >
+    <text
+      x="50%"
+      y="50%"
+      dominantBaseline="middle"
+      textAnchor="middle"
+      fontSize={size * 0.9}
+      fontWeight="bold"
+    >
+      ₵
+    </text>
+  </svg>
+);
 
 const BottomNav = () => {
   const router = useRouter();
@@ -12,7 +34,7 @@ const BottomNav = () => {
 
   const navItems = [
     { name: "history", icon: <FaHistory size={24} />, label: "History", link: "/history" },
-    { name: "transactions", icon: <FaCediSign size={24} />, label: "Transactions", link: "/transactions" },
+    { name: "transactions", icon: <CediIcon size={24} />, label: "Transactions", link: "/transactions" },
     { name: "dashboard", icon: <RiDashboardLine size={24} />, label: "Dashboard", link: "/dashboard" },
     { name: "afa", icon: <MdFamilyRestroom size={24} />, label: "AFA", link: "/afa-registration" },
     { name: "profile", icon: <MdManageAccounts size={24} />, label: "Profile", link: "/profile" },
