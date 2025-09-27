@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 
 export default function WhatsAppSupport() {
@@ -7,50 +9,96 @@ export default function WhatsAppSupport() {
   const [size, setSize] = useState("");
   const [date, setDate] = useState("");
 
+  const handleSend = () => {
+    if (!network || !recipient || !size || !date) {
+      alert("Please fill in all fields.");
+      return;
+    }
+
+    const message = `Issue: order not received\nNetwork: ${network}\nRecipient: ${recipient}\nSize: ${size}\nDate: ${date}`;
+    const link = `https://wa.me/233556429525?text=${encodeURIComponent(message)}`;
+    window.open(link, "_blank");
+  };
+
   return (
     <>
-      <div style={{ position: "fixed", left: 16, bottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-        <a href="https://wa.me/233247918766" target="_blank" rel="noreferrer">
-          <div style={{ width:56, height:56, borderRadius:28, background:"#25D366", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", boxShadow:"0 6px 18px rgba(0,0,0,0.15)"}}>
-            Help
-          </div>
+      {/* Floating Buttons */}
+      <div className="fixed left-4 bottom-4 flex flex-col gap-3 z-50 md:hidden">
+        <a
+          href="https://wa.me/233247918766"
+          target="_blank"
+          rel="noreferrer"
+          className="w-14 h-14 rounded-full bg-green-600 text-white flex items-center justify-center shadow-lg hover:bg-green-700 transition"
+          aria-label="Help"
+        >
+          Help
         </a>
 
-        <div onClick={() => setShowForm(s => !s)} style={{ cursor:"pointer" }}>
-          <div style={{ width:56, height:56, borderRadius:28, background:"#2BFF8E", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 6px 18px rgba(0,0,0,0.12)"}}>
-            Order
-          </div>
-        </div>
+        <button
+          onClick={() => setShowForm((s) => !s)}
+          className="w-14 h-14 rounded-full bg-teal-400 text-white flex items-center justify-center shadow-lg hover:bg-teal-500 transition"
+          aria-label="Order"
+        >
+          Order
+        </button>
 
-        <a href="https://chat.whatsapp.com/BoesNGVpxrq8H6KQ3J2x4w" target="_blank" rel="noreferrer">
-          <div style={{ width:56, height:56, borderRadius:28, background:"#075E54", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            Group
-          </div>
+        <a
+          href="https://chat.whatsapp.com/BoesNGVpxrq8H6KQ3J2x4w"
+          target="_blank"
+          rel="noreferrer"
+          className="w-14 h-14 rounded-full bg-green-900 text-white flex items-center justify-center shadow-lg hover:bg-green-800 transition"
+          aria-label="Group"
+        >
+          Group
         </a>
       </div>
 
+      {/* Order Form */}
       {showForm && (
-        <div style={{ position:"fixed", left:86, bottom:16, width:320, background:"#fff", padding:16, borderRadius:8, boxShadow:"0 6px 18px rgba(0,0,0,0.12)" }}>
-          <h4 style={{ marginTop:0 }}>Order not received — Report</h4>
-          <div style={{ marginBottom:8 }}>
-            <label className="small">Network</label>
-            <input className="input" value={network} onChange={(e)=>setNetwork(e.target.value)} placeholder="e.g. MTN" />
-          </div>
-          <div style={{ marginBottom:8 }}>
-            <label className="small">Recipient Number</label>
-            <input className="input" value={recipient} onChange={(e)=>setRecipient(e.target.value)} placeholder="+233..." />
-          </div>
-          <div style={{ marginBottom:8 }}>
-            <label className="small">Data Size</label>
-            <input className="input" value={size} onChange={(e)=>setSize(e.target.value)} placeholder="e.g. 2GB" />
-          </div>
-          <div style={{ marginBottom:8 }}>
-            <label className="small">Date of Order</label>
-            <input className="input" type="date" value={date} onChange={(e)=>setDate(e.target.value)} />
-          </div>
-          <div style={{ display:"flex", gap:8 }}>
-            <a href={`https://wa.me/233556429525?text=${encodeURIComponent(`Issue: order not received\nNetwork:${network}\nRecipient:${recipient}\nSize:${size}\nDate:${date}`)}`} target="_blank" rel="noreferrer" className="btn">Send to Support</a>
-            <button onClick={()=>setShowForm(false)} className="btn" style={{ background:"#999" }}>Close</button>
+        <div className="fixed left-20 bottom-4 w-80 bg-white p-4 rounded-lg shadow-lg z-50">
+          <h4 className="text-lg font-semibold mb-3">Report Order Issue</h4>
+
+          <input
+            type="text"
+            placeholder="Network (e.g. MTN)"
+            value={network}
+            onChange={(e) => setNetwork(e.target.value)}
+            className="input mb-2 w-full"
+          />
+          <input
+            type="text"
+            placeholder="Recipient Number (+233...)"
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            className="input mb-2 w-full"
+          />
+          <input
+            type="text"
+            placeholder="Data Size (e.g. 2GB)"
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+            className="input mb-2 w-full"
+          />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="input mb-3 w-full"
+          />
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleSend}
+              className="flex-1 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition"
+            >
+              Send
+            </button>
+            <button
+              onClick={() => setShowForm(false)}
+              className="flex-1 bg-gray-400 text-white px-3 py-2 rounded hover:bg-gray-500 transition"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
