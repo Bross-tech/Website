@@ -20,7 +20,8 @@
     "react-dom": "18.2.0",
     "react-icons": "^5.5.0",
     "react-paystack": "^6.0.0",
-    "recharts": "^3.2.0"
+    "recharts": "^3.2.0",
+    "react-hot-toast": "^2.4.1"   // ✅ added here
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
