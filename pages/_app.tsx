@@ -1,3 +1,4 @@
+// pages/_app.tsx
 import type { AppProps } from "next/app";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
@@ -21,12 +22,10 @@ function AppContent({ Component, pageProps }: AppProps) {
 
     const path = router.pathname;
 
-    // Admin trying to access user pages → redirect to admin dashboard
     if (role === "admin" && userRoutes.includes(path)) {
       router.push("/admin-dashboard");
     }
 
-    // Non-admin trying to access admin pages → redirect to regular dashboard
     if (role !== "admin" && adminRoutes.includes(path)) {
       router.push("/dashboard");
     }
@@ -34,15 +33,12 @@ function AppContent({ Component, pageProps }: AppProps) {
 
   return (
     <CartProvider>
-      {/* Top navbar */}
       <Navbar userId={userId} role={role} wallet={wallet} />
 
-      {/* Main content with bottom nav spacing */}
       <div className="pb-20">
         <Component {...pageProps} />
       </div>
 
-      {/* Floating components */}
       <CartWidget />
       <BottomNav />
       <Toaster position="top-right" reverseOrder={false} />
