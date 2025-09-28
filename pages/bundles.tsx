@@ -16,14 +16,17 @@ export default function BundlesPage() {
   const router = useRouter();
   const [userData, setUserData] = useState<{
     id: string;
-    role: string;
+    role: string; // keep as string
     wallet: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
       if (userError) {
         console.error("Error fetching user:", userError);
@@ -73,7 +76,7 @@ export default function BundlesPage() {
       {userData && (
         <Navbar
           userId={userData.id}
-          role={userData.role}
+          role={userData.role as "agent" | "admin" | "customer"} // ✅ patched
           wallet={userData.wallet}
         />
       )}
