@@ -16,6 +16,7 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState<string>("");
 
   const router = useRouter();
 
@@ -29,6 +30,7 @@ export default function Dashboard() {
       }
 
       setUserId(user.id);
+      setEmail(user.email ?? "");
 
       // fetch wallet
       const { data: profile } = await supabase
@@ -44,9 +46,9 @@ export default function Dashboard() {
       if (orders) {
         setStats({
           total: orders.length,
-          pending: orders.filter((o) => o.status === "pending").length,
-          processing: orders.filter((o) => o.status === "processing").length,
-          delivered: orders.filter((o) => o.status === "delivered").length,
+          pending: orders.filter((o) => o.status === "Pending").length,
+          processing: orders.filter((o) => o.status === "Processing").length,
+          delivered: orders.filter((o) => o.status === "Delivered").length,
         });
       }
 
@@ -67,8 +69,8 @@ export default function Dashboard() {
     const paystack = new window.PaystackPop();
     paystack.newTransaction({
       key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
-      amount: amount * 100, // kobo
-      email: "user@example.com", // TODO: replace with actual user email
+      amount: amount * 100, // in pesewas
+      email: email || "user@example.com", // ✅ use real user email
       callback: async (response: any) => {
         try {
           const res = await fetch("/api/paystack/verify", {
@@ -118,19 +120,31 @@ export default function Dashboard() {
 
       {/* Order Stats */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-blue-100 p-4 rounded-lg text-center">
+        <div
+          onClick={() => router.push("/orders")}
+          className="bg-blue-100 p-4 rounded-lg text-center cursor-pointer hover:bg-blue-200"
+        >
           <p>Total</p>
           <h3 className="text-2xl font-bold">{stats.total}</h3>
         </div>
-        <div className="bg-yellow-100 p-4 rounded-lg text-center">
+        <div
+          onClick={() => router.push("/orders?status=Pending")}
+          className="bg-yellow-100 p-4 rounded-lg text-center cursor-pointer hover:bg-yellow-200"
+        >
           <p>Pending</p>
           <h3 className="text-2xl font-bold">{stats.pending}</h3>
         </div>
-        <div className="bg-orange-100 p-4 rounded-lg text-center">
+        <div
+          onClick={() => router.push("/orders?status=Processing")}
+          className="bg-orange-100 p-4 rounded-lg text-center cursor-pointer hover:bg-orange-200"
+        >
           <p>Processing</p>
           <h3 className="text-2xl font-bold">{stats.processing}</h3>
         </div>
-        <div className="bg-green-100 p-4 rounded-lg text-center">
+        <div
+          onClick={() => router.push("/orders?status=Delivered")}
+          className="bg-green-100 p-4 rounded-lg text-center cursor-pointer hover:bg-green-200"
+        >
           <p>Delivered</p>
           <h3 className="text-2xl font-bold">{stats.delivered}</h3>
         </div>
@@ -143,4 +157,4 @@ export default function Dashboard() {
       <CartWidget />
     </div>
   );
-          }
+      }
