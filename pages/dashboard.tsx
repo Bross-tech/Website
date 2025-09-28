@@ -15,6 +15,7 @@ export default function Dashboard() {
     delivered: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -26,6 +27,8 @@ export default function Dashboard() {
         router.push("/auth");
         return;
       }
+
+      setUserId(user.id);
 
       // fetch wallet
       const { data: profile } = await supabase
@@ -54,10 +57,45 @@ export default function Dashboard() {
   }, [router]);
 
   const handleDeposit = async () => {
-    const amount = prompt("Enter amount to deposit (GHS)");
-    if (!amount) return;
-    alert("Redirect to Paystack with amount " + amount);
-    // TODO: Implement Paystack deposit flow
+    if (!userId) return;
+
+    const amountStr = prompt("Enter amount to deposit (GHS)");
+    const amount = Number(amountStr);
+    if (!amount || amount <= 0) return;
+
+    // @ts-ignore
+    const paystack = new window.PaystackPop();
+    paystack.newTransaction({
+      key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
+      amount: amount * 100, // kobo
+      email: "user@example.com", // TODO: replace with actual user email
+      callback: async (response: any) => {
+        try {
+          const res = await fetch("/api/paystack/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reference: response.reference,
+              userId,
+              amount,
+            }),
+          });
+
+          const result = await res.json();
+          if (result.success) {
+            alert("Deposit successful! Wallet updated.");
+            setWallet((prev) => prev + amount); // update UI instantly
+          } else {
+            alert("Deposit failed: " + result.error);
+          }
+        } catch (err) {
+          alert("Something went wrong verifying payment");
+        }
+      },
+      onClose: () => {
+        alert("Transaction was not completed.");
+      },
+    });
   };
 
   if (loading) return <p className="p-4">Loading dashboard...</p>;
@@ -105,4 +143,4 @@ export default function Dashboard() {
       <CartWidget />
     </div>
   );
-}
+          }
