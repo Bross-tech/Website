@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 import type { Bundle } from "@/components/Bundles";
-import { useAuth } from "@/context/AuthContext"; // ✅ get role from AuthContext
+import { useAuth } from "@/context/AuthContext"; // ✅ assumes you have AuthContext providing role
 
 type CartItem = {
   bundle: Bundle;
@@ -27,7 +27,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const addToCart = (bundle: Bundle, recipient: string) => {
-    // ✅ determine price based on role
+    // Determine price based on role
     const price = role === "agent" ? bundle.priceAgent : bundle.priceCustomer;
 
     setItems((prev) => [...prev, { bundle, recipient, price }]);
