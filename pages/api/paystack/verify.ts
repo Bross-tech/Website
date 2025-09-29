@@ -1,17 +1,17 @@
 // pages/api/paystack/verify.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { supabaseAdmin } from "../../../lib/supabaseClient"; 
+import { supabaseAdmin } from "../../../lib/supabaseClient";
 import { notifyUserAndAdmin } from "../../../lib/smsClient";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY || "";
-const ADMIN_PHONE = process.env.ADMIN_PHONE || ""; // ✅ notify admin too
+const ADMIN_PHONE = process.env.ADMIN_PHONE || "";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
+  if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { reference } = req.query;
+  const { reference, userId, amount } = req.body;
   if (!reference || typeof reference !== "string") {
     return res.status(400).json({ error: "Missing transaction reference" });
   }
@@ -27,11 +27,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "Payment not verified" });
     }
 
-    // 2️⃣ Extract user + amount
     const email = result.data.customer.email;
-    const paidAmount = result.data.amount / 100; // kobo → GHS
+    const paidAmount = result.data.amount / 100; // pesewas → GHS
 
-    // 3️⃣ Check if already processed
+    // 2️⃣ Prevent double-processing
     const { data: existing } = await supabaseAdmin
       .from("transactions")
       .select("id")
@@ -45,20 +44,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // 4️⃣ Get user profile
-    const { data: profile, error: fetchError } = await supabaseAdmin
+    // 3️⃣ Get user profile (by email or fallback userId)
+    let { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("wallet, phone")
+      .select("id, wallet, phone")
       .eq("email", email)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !profile) {
-      return res.status(500).json({ error: "User not found" });
+    if (!profile && userId) {
+      const { data: byId } = await supabaseAdmin
+        .from("profiles")
+        .select("id, wallet, phone")
+        .eq("id", userId)
+        .single();
+      profile = byId;
+    }
+
+    if (!profile) {
+      return res.status(404).json({ error: "User profile not found" });
     }
 
     const newBalance = (profile.wallet || 0) + paidAmount;
 
-    // 5️⃣ Atomic transaction (wallet update + log)
+    // 4️⃣ Atomic update
     const { error: txError } = await supabaseAdmin.rpc("deposit_and_log", {
       ref: reference,
       user_email: email,
@@ -70,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "Failed to complete deposit" });
     }
 
-    // 6️⃣ Send SMS to user + admin
+    // 5️⃣ Notify via SMS
     if (profile.phone) {
       await notifyUserAndAdmin(
         profile.phone,
