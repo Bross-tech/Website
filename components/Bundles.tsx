@@ -12,7 +12,11 @@ export type Bundle = {
   priceCustomer: number;
 };
 
-export default function Bundles() {
+interface BundlesProps {
+  role: "customer" | "agent" | "admin" | null;
+}
+
+export default function Bundles({ role }: BundlesProps) {
   const { addToCart } = useCart();
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [query, setQuery] = useState("");
@@ -37,15 +41,15 @@ export default function Bundles() {
     fetchBundles();
   }, []);
 
-  // ✅ sorting based on *customer price by default*
-  // Context will apply the real role pricing when adding to cart
+  if (!role || role === "admin") return null; // admins don’t see bundles
+
   const list = bundles
     .filter((b) =>
       `${b.network} ${b.size}`.toLowerCase().includes(query.toLowerCase())
     )
     .sort((a, b) => {
-      const priceA = a.priceCustomer;
-      const priceB = b.priceCustomer;
+      const priceA = role === "agent" ? a.priceAgent : a.priceCustomer;
+      const priceB = role === "agent" ? b.priceAgent : b.priceCustomer;
       return sort === "asc" ? priceA - priceB : priceB - priceA;
     });
 
@@ -53,13 +57,11 @@ export default function Bundles() {
     const recipient = prompt("Enter recipient number (include country code)");
     if (!recipient) return;
 
-    addToCart(bundle, recipient); // ✅ no price passed
+    addToCart(bundle, recipient, role === "agent" ? bundle.priceAgent : bundle.priceCustomer);
     alert("Added to cart!");
   };
 
-  if (loading) {
-    return <p className="p-6 text-center">Loading bundles...</p>;
-  }
+  if (loading) return <p className="p-6 text-center">Loading bundles...</p>;
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -90,7 +92,10 @@ export default function Bundles() {
             className="flex justify-between items-center p-3 border rounded"
           >
             <div>
-              <strong>{b.network}</strong> — {b.size}
+              <strong>{b.network}</strong> — {b.size} :{" "}
+              <span className="font-bold">
+                GHS {role === "agent" ? b.priceAgent : b.priceCustomer}
+              </span>
             </div>
             <button
               onClick={() => handleAdd(b)}
