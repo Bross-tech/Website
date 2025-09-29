@@ -60,9 +60,9 @@ export default function Dashboard() {
     fetchProfile();
   }, [router]);
 
+  // Wallet deposit
   const handleDeposit = async () => {
     if (!userId) return;
-
     const amountStr = prompt("Enter amount to deposit (GHS)");
     const amount = Number(amountStr);
     if (!amount || amount <= 0) return;
@@ -87,8 +87,49 @@ export default function Dashboard() {
           } else {
             alert("Deposit failed: " + result.error);
           }
-        } catch (err) {
+        } catch {
           alert("Verification error");
+        }
+      },
+      onClose: () => alert("Transaction not completed."),
+    });
+  };
+
+  // Upgrade to agent
+  const handleUpgrade = async () => {
+    if (!userId) return;
+
+    const confirmUpgrade = confirm("Upgrade to Agent for 25 GHS?");
+    if (!confirmUpgrade) return;
+
+    // @ts-ignore
+    const paystack = new window.PaystackPop();
+    paystack.newTransaction({
+      key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
+      amount: 25 * 100,
+      email: email || "user@example.com",
+      callback: async (response: any) => {
+        try {
+          const res = await fetch("/api/paystack/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reference: response.reference, userId, amount: 25 }),
+          });
+          const result = await res.json();
+          if (result.success) {
+            // Update role to agent
+            await supabase
+              .from("profiles")
+              .update({ role: "agent" })
+              .eq("id", userId);
+
+            setRole("agent");
+            alert("You are now an Agent! Enjoy discounted bundles.");
+          } else {
+            alert("Upgrade failed: " + result.error);
+          }
+        } catch {
+          alert("Upgrade verification error");
         }
       },
       onClose: () => alert("Transaction not completed."),
@@ -106,12 +147,22 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold">Wallet Balance</h2>
             <p className="text-green-600 text-lg">GHS {wallet.toFixed(2)}</p>
           </div>
-          <button
-            className="bg-green-500 text-white px-3 py-1 rounded-full flex items-center"
-            onClick={handleDeposit}
-          >
-            ➕ Deposit
-          </button>
+          <div className="flex gap-2">
+            <button
+              className="bg-green-500 text-white px-3 py-1 rounded-full flex items-center"
+              onClick={handleDeposit}
+            >
+              ➕ Deposit
+            </button>
+            {role === "customer" && (
+              <button
+                className="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center"
+                onClick={handleUpgrade}
+              >
+                ⬆️ Upgrade to Agent
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -154,4 +205,4 @@ export default function Dashboard() {
       {role !== "admin" && <CartWidget />}
     </div>
   );
-}
+        }
