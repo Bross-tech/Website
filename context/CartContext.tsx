@@ -1,185 +1,63 @@
 "use client";
 
-import { useCart } from "@/context/CartContext";
-import { useAuth } from "@/context/AuthContext";
-import { Fragment, useState } from "react";
-import { Transition } from "@headlessui/react";
-import { PaystackButton } from "react-paystack";
+import { createContext, useContext, useState, ReactNode } from "react";
+import type { Bundle } from "@/components/Bundles";
+import { useAuth } from "./AuthContext"; // Assumes AuthContext provides user role
 
-export default function FloatingCart() {
-  const { items, isOpen, toggleCart, removeFromCart, clearCart } = useCart();
-  const { walletBalance, userEmail, userId } = useAuth(); // Assume auth provides these
-  const [isPaying, setIsPaying] = useState(false);
+// Each item in the cart
+export type CartItem = {
+  bundle: Bundle;
+  recipient: string;
+  price: number;
+};
 
-  const total = items.reduce((sum, item) => sum + item.price, 0);
+type CartContextType = {
+  items: CartItem[];
+  addToCart: (bundle: Bundle, recipient: string) => void;
+  removeFromCart: (index: number) => void;
+  clearCart: () => void;
+  isOpen: boolean;
+  toggleCart: () => void;
+};
 
-  // Paystack configuration
-  const paystackConfig = {
-    reference: new Date().getTime().toString(),
-    email: userEmail,
-    amount: total * 100, // Paystack uses kobo
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
+const CartContext = createContext<CartContextType | undefined>(undefined);
+
+export function CartProvider({ children }: { children: ReactNode }) {
+  const { role } = useAuth(); // Get user role from AuthContext
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Add item to cart
+  const addToCart = (bundle: Bundle, recipient: string) => {
+    const price = role === "agent" ? bundle.priceAgent : bundle.priceCustomer;
+
+    setItems((prev) => [...prev, { bundle, recipient, price }]);
+    setIsOpen(true); // Auto-open cart when adding
   };
 
-  // Handle wallet or Paystack payment
-  const handlePayNow = async () => {
-    setIsPaying(true);
-
-    if (walletBalance >= total) {
-      // Deduct wallet via backend
-      try {
-        const res = await fetch("/api/pay-wallet", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, amount: total }),
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          alert("Payment successful via wallet!");
-          clearCart();
-        } else {
-          alert(data.error || "Wallet payment failed");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Server error during wallet payment");
-      }
-      setIsPaying(false);
-    }
-    // Else Paystack will handle payment (button click)
+  // Remove an item by index
+  const removeFromCart = (index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  if (items.length === 0) return null; // Hide cart if empty
+  // Clear entire cart
+  const clearCart = () => setItems([]);
+
+  // Toggle cart sidebar
+  const toggleCart = () => setIsOpen((prev) => !prev);
 
   return (
-    <>
-      {/* Floating Cart Button */}
-      <button
-        onClick={toggleCart}
-        className="fixed bottom-5 right-5 z-50 bg-blue-600 text-white px-5 py-3 rounded-full shadow-lg hover:bg-blue-700 transition flex items-center space-x-2"
-      >
-        <span>Cart</span>
-        <span className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-semibold">
-          {items.length}
-        </span>
-      </button>
-
-      {/* Cart Sidebar */}
-      <Transition
-        as={Fragment}
-        show={isOpen}
-        enter="transform transition ease-in-out duration-300"
-        enterFrom="translate-x-full"
-        enterTo="translate-x-0"
-        leave="transform transition ease-in-out duration-300"
-        leaveFrom="translate-x-0"
-        leaveTo="translate-x-full"
-      >
-        <div className="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-40 flex flex-col">
-          {/* Header */}
-          <div className="flex justify-between items-center p-4 border-b">
-            <h2 className="text-lg font-semibold">My Cart</h2>
-            <button
-              onClick={toggleCart}
-              className="text-gray-500 hover:text-gray-700 text-xl"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Cart Items */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <ul className="space-y-3">
-              {items.map((item, i) => (
-                <li
-                  key={i}
-                  className="flex justify-between items-center border-b pb-2"
-                >
-                  <div>
-                    <p className="font-medium">{item.bundle.name}</p>
-                    <p className="text-sm text-gray-500">
-                      Network: {item.bundle.network}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Data Size: {item.bundle.dataSize}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Recipient: {item.recipient}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <p className="font-medium">GHS {item.price}</p>
-                    <button
-                      onClick={() => removeFromCart(i)}
-                      className="text-red-500 text-sm hover:underline mt-1"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Footer */}
-          <div className="p-4 border-t flex flex-col space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-gray-700">Total:</span>
-              <span className="font-bold text-gray-900">GHS {total}</span>
-            </div>
-
-            <div className="flex justify-between">
-              <button
-                onClick={clearCart}
-                className="flex-1 mr-2 bg-red-500 text-white py-2 rounded hover:bg-red-600 transition"
-                disabled={isPaying}
-              >
-                Clear Cart
-              </button>
-
-              {/* Pay Now button */}
-              {walletBalance < total ? (
-                // Use PaystackButton if wallet insufficient
-                <PaystackButton
-                  {...paystackConfig}
-                  text={isPaying ? "Processing..." : "Pay Now"}
-                  className="flex-1 ml-2 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-                  onSuccess={async (reference) => {
-                    try {
-                      const res = await fetch("/api/verify-payment", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ reference: reference.reference }),
-                      });
-                      const data = await res.json();
-                      if (data.success) {
-                        alert("Payment successful!");
-                        clearCart();
-                      } else {
-                        alert("Payment verification failed!");
-                      }
-                    } catch (err) {
-                      console.error(err);
-                      alert("Server error during payment verification");
-                    }
-                  }}
-                  onClose={() => alert("Payment closed")}
-                />
-              ) : (
-                // Wallet payment button
-                <button
-                  onClick={handlePayNow}
-                  className="flex-1 ml-2 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-                  disabled={isPaying}
-                >
-                  {isPaying ? "Processing..." : "Pay Now"}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </>
+    <CartContext.Provider
+      value={{ items, addToCart, removeFromCart, clearCart, isOpen, toggleCart }}
+    >
+      {children}
+    </CartContext.Provider>
   );
+}
+
+// Hook to use cart context
+export function useCart() {
+  const ctx = useContext(CartContext);
+  if (!ctx) throw new Error("useCart must be used inside CartProvider");
+  return ctx;
 }
