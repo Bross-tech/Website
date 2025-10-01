@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
 
   const router = useRouter();
 
@@ -33,16 +34,17 @@ export default function DashboardPage() {
       setUserId(user.id);
       setEmail(user.email ?? "");
 
-      // ✅ fetch wallet
+      // Fetch wallet & username
       const { data: profile } = await supabase
         .from("profiles")
-        .select("wallet")
+        .select("wallet, username")
         .eq("id", user.id)
         .single();
 
       setWallet(profile?.wallet || 0);
+      setUsername(profile?.username || "User");
 
-      // ✅ fetch order stats
+      // Fetch order stats
       const { data: orders } = await supabase.from("orders").select("status");
       if (orders) {
         setStats({
@@ -61,7 +63,6 @@ export default function DashboardPage() {
 
   const handleDeposit = async () => {
     if (!userId) return;
-
     const amountStr = prompt("Enter amount to deposit (GHS)");
     const amount = Number(amountStr);
     if (!amount || amount <= 0) return;
@@ -70,24 +71,20 @@ export default function DashboardPage() {
     const paystack = new window.PaystackPop();
     paystack.newTransaction({
       key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
-      amount: amount * 100, // pesewas
+      amount: amount * 100,
       email: email || "user@example.com",
       callback: async (response: any) => {
         try {
           const res = await fetch("/api/paystack/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              reference: response.reference,
-              userId,
-              amount,
-            }),
+            body: JSON.stringify({ reference: response.reference, userId, amount }),
           });
 
           const result = await res.json();
           if (result.success) {
             alert("Deposit successful! Wallet updated.");
-            setWallet((prev) => prev + amount); // update UI instantly
+            setWallet((prev) => prev + amount);
           } else {
             alert("Deposit failed: " + result.error);
           }
@@ -95,9 +92,7 @@ export default function DashboardPage() {
           alert("Something went wrong verifying payment");
         }
       },
-      onClose: () => {
-        alert("Transaction was not completed.");
-      },
+      onClose: () => alert("Transaction was not completed."),
     });
   };
 
@@ -105,7 +100,10 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* 🚨 Wallet Warning Banner */}
+      {/* Username Greeting */}
+      <h1 className="text-2xl font-bold">Welcome, {username}!</h1>
+
+      {/* Wallet Warning */}
       {wallet <= 0 && (
         <div className="bg-red-100 text-red-700 p-3 rounded-lg text-center font-semibold">
           Your wallet is empty. Please deposit funds before buying bundles.
@@ -158,11 +156,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Bundles */}
-      <Bundles />
+      {/* Bundles - only data bundles, with logo & color */}
+      <Bundles showOnlyDataBundles />
 
       {/* Floating Cart */}
       <CartWidget />
     </div>
   );
-}
+            }
