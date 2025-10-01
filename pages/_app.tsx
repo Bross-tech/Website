@@ -1,17 +1,19 @@
-// pages/_app.tsx
-import type { AppProps } from "next/app";
+"use client";
+
+import { ReactNode, useEffect } from "react";
+import { useRouter } from "next/router";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
-import Navbar from "@/components/Navbar";
-import CartWidget from "@/components/CartWidget";
 import BottomNav from "@/components/BottomNav";
+import CartWidget from "@/components/CartWidget";
+import WhatsAppSupport from "@/components/WhatsAppSupport";
 import { Toaster } from "react-hot-toast";
-import { useRouter } from "next/router";
-import { useEffect } from "react";
 import "@/styles/globals.css";
 
-function AppContent({ Component, pageProps }: AppProps) {
-  const { userId, role, wallet, username } = useAuth();
+type Props = { children: ReactNode };
+
+function AppLayout({ children }: Props) {
+  const { userId, role, wallet } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -33,25 +35,22 @@ function AppContent({ Component, pageProps }: AppProps) {
 
   return (
     <CartProvider>
-      <Navbar userId={userId} role={role} wallet={wallet} />
+      <div className="pb-20">{children}</div>
 
-      <div className="pb-20">
-        <Component {...pageProps} />
-      </div>
-
-      {/* Only show cart & bottom nav for non-admins */}
-      {role !== "admin" && <CartWidget />}
-      {role !== "admin" && <BottomNav userId={userId} username={username} wallet={wallet} role={role} />}
-      
+      <CartWidget />
+      <BottomNav userId={userId} role={role} wallet={wallet} />
+      <WhatsAppSupport role={role} />
       <Toaster position="top-right" reverseOrder={false} />
     </CartProvider>
   );
 }
 
-export default function MyApp(props: AppProps) {
+export default function MyApp({ Component, pageProps }: any) {
   return (
     <AuthProvider>
-      <AppContent {...props} />
+      <AppLayout>
+        <Component {...pageProps} />
+      </AppLayout>
     </AuthProvider>
   );
 }
