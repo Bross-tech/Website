@@ -1,105 +1,153 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-type Approval = {
+type Order = {
   id: string;
-  full_name: string;
-  mobile: string;
-  location: string;
-  dob: string;
-  national_id: string;
-  description: string;
-  status: string; // pending | processing | completed
+  user_id: string;
+  bundle: string;
+  status: string;
   created_at: string;
 };
 
-export default function AdminPage() {
-  const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [loading, setLoading] = useState(true);
+type Afa = {
+  id: string;
+  user_id: string;
+  full_name: string;
+  mobile: string;
+  status: string;
+  created_at: string;
+};
 
-  const fetchApprovals = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
+export default function AdminDashboard() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [afas, setAfas] = useState<Afa[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth?.user;
+      if (!user) {
+        router.push("/auth");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "admin") {
+        router.push("/dashboard");
+        return;
+      }
+
+      await fetchOrders();
+      await fetchAfas();
+
+      setLoading(false);
+    };
+
+    fetchAdminData();
+  }, [router]);
+
+  const fetchOrders = async () => {
+    const { data } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setOrders(data as Order[]);
+  };
+
+  const fetchAfas = async () => {
+    const { data } = await supabase
       .from("approvals")
       .select("*")
       .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching approvals:", error);
-    } else {
-      setApprovals(data as Approval[]);
-    }
-    setLoading(false);
+    if (data) setAfas(data as Afa[]);
   };
 
-  useEffect(() => {
-    fetchApprovals();
-  }, []);
-
-  const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase
-      .from("approvals")
-      .update({ status })
-      .eq("id", id);
-
-    if (error) {
-      alert("Failed to update status: " + error.message);
-    } else {
-      fetchApprovals();
-    }
+  const updateOrderStatus = async (id: string, status: string) => {
+    await supabase.from("orders").update({ status }).eq("id", id);
+    fetchOrders();
   };
+
+  const updateAfaStatus = async (id: string, status: string) => {
+    await supabase.from("approvals").update({ status }).eq("id", id);
+    fetchAfas();
+  };
+
+  const statusOptions = (type: "order" | "afa") =>
+    type === "order"
+      ? ["Pending", "Processing", "Delivered"]
+      : ["Pending", "Processing", "Completed"];
+
+  if (loading) return <p className="p-4">Loading admin dashboard...</p>;
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Admin Panel – AFA Registrations</h1>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : approvals.length === 0 ? (
-        <p>No AFA registrations yet.</p>
-      ) : (
-        <table className="w-full border border-gray-300 text-sm">
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="border p-2">Full Name</th>
-              <th className="border p-2">Mobile</th>
-              <th className="border p-2">Location</th>
-              <th className="border p-2">DOB</th>
-              <th className="border p-2">National ID</th>
-              <th className="border p-2">Status</th>
-              <th className="border p-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {approvals.map((a) => (
-              <tr key={a.id} className="text-center">
-                <td className="border p-2">{a.full_name}</td>
-                <td className="border p-2">{a.mobile}</td>
-                <td className="border p-2">{a.location}</td>
-                <td className="border p-2">{a.dob}</td>
-                <td className="border p-2">{a.national_id}</td>
-                <td className="border p-2 capitalize">{a.status ?? "pending"}</td>
-                <td className="border p-2 flex gap-2 justify-center">
-                  <button
-                    onClick={() => updateStatus(a.id, "processing")}
-                    className="px-2 py-1 bg-yellow-500 text-white rounded"
-                  >
-                    Processing
-                  </button>
-                  <button
-                    onClick={() => updateStatus(a.id, "completed")}
-                    className="px-2 py-1 bg-green-600 text-white rounded"
-                  >
-                    Completed
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      {/* Orders Management */}
+      <div className="bg-white shadow-md p-4 rounded-lg">
+        <h2 className="font-bold text-lg mb-3">Manage Orders</h2>
+        <ul className="space-y-3">
+          {orders.map((o) => (
+            <li key={o.id} className="flex justify-between items-center border p-3 rounded shadow-sm">
+              <div>
+                <p className="font-medium">{o.bundle}</p>
+                <p className="text-xs text-gray-500">
+                  User: {o.user_id} • {new Date(o.created_at).toLocaleString()}
+                </p>
+              </div>
+              <select
+                value={o.status}
+                onChange={(e) => updateOrderStatus(o.id, e.target.value)}
+                className="border rounded p-1"
+              >
+                {statusOptions("order").map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* AFA Registrations Management */}
+      <div className="bg-white shadow-md p-4 rounded-lg">
+        <h2 className="font-bold text-lg mb-3">Manage AFA Registrations</h2>
+        <ul className="space-y-3">
+          {afas.map((a) => (
+            <li key={a.id} className="flex justify-between items-center border p-3 rounded shadow-sm">
+              <div>
+                <p className="font-medium">{a.full_name} ({a.mobile})</p>
+                <p className="text-xs text-gray-500">
+                  User: {a.user_id} • {new Date(a.created_at).toLocaleString()}
+                </p>
+              </div>
+              <select
+                value={a.status}
+                onChange={(e) => updateAfaStatus(a.id, e.target.value)}
+                className="border rounded p-1"
+              >
+                {statusOptions("afa").map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
