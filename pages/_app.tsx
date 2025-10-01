@@ -11,7 +11,7 @@ import { useEffect } from "react";
 import "@/styles/globals.css";
 
 function AppContent({ Component, pageProps }: AppProps) {
-  const { userId, role, wallet } = useAuth();
+  const { userId, role, wallet, username } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -39,8 +39,10 @@ function AppContent({ Component, pageProps }: AppProps) {
         <Component {...pageProps} />
       </div>
 
-      <CartWidget />
-      <BottomNav />
+      {/* Only show cart & bottom nav for non-admins */}
+      {role !== "admin" && <CartWidget />}
+      {role !== "admin" && <BottomNav userId={userId} username={username} wallet={wallet} role={role} />}
+      
       <Toaster position="top-right" reverseOrder={false} />
     </CartProvider>
   );
