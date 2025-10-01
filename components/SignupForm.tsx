@@ -14,23 +14,35 @@ export default function SignupForm() {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { username, mobile }, // stores in auth metadata
-      },
-    });
+    try {
+      // Create the user in auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    setLoading(false);
+      if (error) throw error;
 
-    if (error) {
-      alert("Error: " + error.message);
-    } else {
-      alert(
-        "Signup successful! Please check your email and then log in to continue."
-      );
-      router.push("/auth/login"); // redirect to login
+      if (data.user) {
+        // Insert into profiles table
+        const { error: profileError } = await supabase.from("profiles").insert([
+          {
+            id: data.user.id, // link to auth user
+            username,
+            mobile,
+            email,
+          },
+        ]);
+
+        if (profileError) throw profileError;
+      }
+
+      alert("Signup successful! Please log in to continue.");
+      router.push("/login");
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,11 +80,7 @@ export default function SignupForm() {
         className="auth-input"
         required
       />
-      <button
-        type="submit"
-        className="auth-btn"
-        disabled={loading}
-      >
+      <button type="submit" className="auth-btn" disabled={loading}>
         {loading ? "Signing up..." : "Sign Up"}
       </button>
     </form>
