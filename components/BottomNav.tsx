@@ -28,18 +28,50 @@ const CediIcon = ({ size = 24 }: { size?: number }) => (
   </svg>
 );
 
-const BottomNav = () => {
+type BottomNavProps = {
+  userId?: string;
+  username?: string; // 👈 required username now
+  wallet?: number;
+  role?: string;
+};
+
+const BottomNav = ({ userId, username, wallet = 0, role }: BottomNavProps) => {
   const router = useRouter();
   const { pathname } = router;
 
   const navItems = {
-    left: { name: "history", icon: <FaHistory size={24} />, label: "History", link: "/history" },
+    left: {
+      name: "history",
+      icon: <FaHistory size={24} />,
+      label: "History",
+      link: "/history",
+    },
     middle: [
-      { name: "transactions", icon: <CediIcon size={24} />, label: "Transactions", link: "/transactions" },
-      { name: "dashboard", icon: <RiDashboardLine size={24} />, label: "Dashboard", link: "/dashboard" },
-      { name: "afa", icon: <MdFamilyRestroom size={24} />, label: "AFA", link: "/afa-registration" },
+      {
+        name: "transactions",
+        icon: <CediIcon size={24} />,
+        label: "Transactions",
+        link: "/transactions",
+      },
+      {
+        name: "dashboard",
+        icon: <RiDashboardLine size={24} />,
+        label: "Dashboard",
+        link: "/dashboard",
+      },
+      {
+        name: "afa",
+        icon: <MdFamilyRestroom size={24} />,
+        label: "AFA",
+        link: "/afa-registration",
+      },
     ],
-    right: { name: "profile", icon: <MdManageAccounts size={24} />, label: "Profile", link: "/profile" },
+    right: {
+      name: "profile",
+      icon: <MdManageAccounts size={24} />,
+      label: "Profile",
+      link: "/profile",
+    },
   };
 
   const renderItem = (item: any) => {
@@ -65,16 +97,34 @@ const BottomNav = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 w-full bg-gray-800 text-white shadow-md flex justify-between px-4 py-2 md:hidden">
-      {/* Left pinned */}
-      {renderItem(navItems.left)}
+    <div>
+      {/* Top section with wallet + role + username */}
+      <div className="w-full bg-gray-900 text-white px-4 py-2 flex justify-between items-center shadow-md">
+        <div className="flex flex-col">
+          <span className="font-semibold">Wallet: ₵{wallet}</span>
+          {username && (
+            <span className="text-sm text-gray-300">👤 {username}</span>
+          )}
+        </div>
+        {role && (
+          <span className="text-sm bg-blue-600 px-2 py-1 rounded capitalize">
+            {role}
+          </span>
+        )}
+      </div>
 
-      {/* Middle evenly spaced */}
-      <div className="flex gap-8">{navItems.middle.map(renderItem)}</div>
+      {/* Bottom nav */}
+      <nav className="fixed bottom-0 left-0 w-full bg-gray-800 text-white shadow-md flex justify-between px-4 py-2 md:hidden">
+        {/* Left pinned */}
+        {renderItem(navItems.left)}
 
-      {/* Right pinned */}
-      {renderItem(navItems.right)}
-    </nav>
+        {/* Middle evenly spaced */}
+        <div className="flex gap-8">{navItems.middle.map(renderItem)}</div>
+
+        {/* Right pinned */}
+        {renderItem(navItems.right)}
+      </nav>
+    </div>
   );
 };
 
