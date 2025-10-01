@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 
-export default function WhatsAppSupport() {
+type Props = {
+  role?: string | null;
+};
+
+export default function WhatsAppSupport({ role }: Props) {
+  // Hide completely for admins
+  if (role === "admin") return null;
+
   const [showForm, setShowForm] = useState(false);
   const [network, setNetwork] = useState("");
   const [recipient, setRecipient] = useState("");
