@@ -13,13 +13,13 @@ type Bundle = {
   price: number;
   type: "data" | "airtime";
   size: string;
-  logo?: string; // optional logo URL if stored in DB
+  logo?: string;
 };
 
 const networkColors: Record<string, string> = {
-  MTN: "bg-yellow-400",
-  TELECEL: "bg-purple-600",
-  AIRTELTIGO: "bg-green-500",
+  MTN: "bg-yellow-400 text-black",
+  TELECEL: "bg-red-600 text-white",
+  AIRTELTIGO: "bg-blue-600 text-white",
 };
 
 const networkLogos: Record<string, string> = {
@@ -36,7 +36,6 @@ export default function Dashboard() {
   const [role, setRole] = useState<"customer" | "agent" | "admin" | null>(null);
   const [email, setEmail] = useState<string>("");
   const [bundles, setBundles] = useState<Bundle[]>([]);
-
   const router = useRouter();
 
   useEffect(() => {
@@ -51,7 +50,7 @@ export default function Dashboard() {
       setUserId(user.id);
       setEmail(user.email ?? "");
 
-      // Fetch profile (wallet + role)
+      // Fetch profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("wallet, role")
@@ -73,7 +72,7 @@ export default function Dashboard() {
         });
       }
 
-      // Only fetch bundles if NOT admin
+      // Only fetch bundles if not admin
       if (userRole !== "admin") {
         const { data: bundlesData, error } = await supabase
           .from("bundles")
@@ -156,7 +155,6 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6">
       {role === "admin" ? (
-        // ✅ Admin dashboard shortcut
         <div className="bg-white shadow-md p-6 rounded-lg text-center">
           <h2 className="text-xl font-bold mb-2">Admin Access</h2>
           <p className="mb-4 text-gray-600">Manage orders and AFA registrations.</p>
@@ -227,15 +225,4 @@ export default function Dashboard() {
                 </div>
                 <h3 className="text-white font-bold text-center text-lg">{bundle.name}</h3>
                 <p className="text-white text-center">{bundle.size}</p>
-                <p className="text-white text-center font-semibold">GHS {bundle.price}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Floating Cart */}
-          <CartWidget />
-        </>
-      )}
-    </div>
-  );
-        }
+                <p className="text-white text-center font-semibold">GHS {bundle
