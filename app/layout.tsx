@@ -9,8 +9,8 @@ import {
 import { FaHistory, FaExchangeAlt, FaRegIdCard } from "react-icons/fa";
 
 export const metadata: Metadata = {
-  title: "Website",
-  description: "My Next.js App",
+  title: "DATASTORE4GH",
+  description: "Fast, Secure & Affordable Data Services in Ghana",
 };
 
 export default function RootLayout({
@@ -21,11 +21,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 flex flex-col min-h-screen">
-        {/* Main content */}
-        <div className="flex-1 pb-16">{children}</div>
+        {/* Header with name and tagline */}
+        <header className="bg-gray-900 text-center py-4 sticky top-0 z-50">
+          <h1 className="text-2xl font-bold text-green-500">DATASTORE4GH</h1>
+          <p className="text-sm text-blue-400">
+            Fast, Secure & Affordable Data Services in Ghana
+          </p>
+        </header>
+
+        {/* Main content with padding to avoid overlap with bottom nav */}
+        <main className="flex-1 pb-24">
+          {children}
+        </main>
 
         {/* Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white shadow-md flex justify-around items-center h-16 border-t">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white shadow-md flex justify-around items-center h-16 border-t z-40">
           {/* Orders / History */}
           <Link href="/orders" className="flex flex-col items-center text-sm">
             <FaHistory size={22} />
@@ -59,4 +69,4 @@ export default function RootLayout({
       </body>
     </html>
   );
-}
+      }
