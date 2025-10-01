@@ -12,18 +12,31 @@ export default function LoginForm() {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    setLoading(false);
+      if (error) throw error;
 
-    if (error) {
-      alert("Error: " + error.message);
-    } else {
-      alert("Login successful!");
-      router.push("/dashboard");
+      if (data.user) {
+        // Get user profile
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        alert(`Welcome back, ${profile.username}!`);
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -45,11 +58,7 @@ export default function LoginForm() {
         className="auth-input"
         required
       />
-      <button
-        type="submit"
-        className="auth-btn"
-        disabled={loading}
-      >
+      <button type="submit" className="auth-btn" disabled={loading}>
         {loading ? "Logging in..." : "Login"}
       </button>
     </form>
