@@ -3,29 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import Image from "next/image";
-
-type Bundle = {
-  id: string;
-  name: string;
-  network: "MTN" | "TELECEL" | "AIRTELTIGO";
-  price: number;
-  type: "data" | "airtime";
-  size: string;
-  logo?: string;
-};
-
-const networkColors: Record<string, string> = {
-  MTN: "bg-yellow-400 text-black",
-  TELECEL: "bg-red-600 text-white",
-  AIRTELTIGO: "bg-blue-600 text-white",
-};
-
-const networkLogos: Record<string, string> = {
-  MTN: "/logos/mtn.png",
-  TELECEL: "/logos/telecel.png",
-  AIRTELTIGO: "/logos/airteltigo.png",
-};
 
 export default function Dashboard() {
   const [wallet, setWallet] = useState<number>(0);
@@ -39,11 +16,10 @@ export default function Dashboard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState<"customer" | "agent" | "admin" | null>(null);
   const [email, setEmail] = useState<string>("");
-  const [bundles, setBundles] = useState<Bundle[]>([]);
   const router = useRouter();
 
   useEffect(() => {
-    const fetchProfileAndBundles = async () => {
+    const fetchProfile = async () => {
       const { data: auth } = await supabase.auth.getUser();
       const user = auth?.user;
       if (!user) {
@@ -77,21 +53,10 @@ export default function Dashboard() {
         });
       }
 
-      // Only fetch bundles if not admin
-      if (userRole !== "admin") {
-        const { data: bundlesData, error } = await supabase
-          .from("bundles")
-          .select("*")
-          .eq("type", "data");
-
-        if (error) console.error("Error fetching bundles:", error);
-        else setBundles(bundlesData || []);
-      }
-
       setLoading(false);
     };
 
-    fetchProfileAndBundles();
+    fetchProfile();
   }, [router]);
 
   const handleDeposit = async () => {
@@ -241,36 +206,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Bundles */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-            {bundles.map((bundle) => (
-              <div
-                key={bundle.id}
-                className={`relative p-4 rounded-lg shadow-md ${networkColors[bundle.network]}`}
-              >
-                <div className="absolute top-2 right-2 bg-white text-black text-xs px-2 py-1 rounded-full font-bold">
-                  Non-expiring
-                </div>
-                <div className="flex justify-center mb-2">
-                  <Image
-                    src={bundle.logo || networkLogos[bundle.network]}
-                    alt={bundle.network}
-                    width={50}
-                    height={50}
-                  />
-                </div>
-                <h3 className="text-white font-bold text-center text-lg">
-                  {bundle.name}
-                </h3>
-                <p className="text-white text-center">{bundle.size}</p>
-                <p className="text-white text-center font-semibold">
-                  GHS {bundle.price.toFixed(2)}
-                </p>
-              </div>
-            ))}
+          {/* Bundles Button */}
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => router.push("/bundles")}
+              className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
+            >
+              📦 Buy Data Bundles
+            </button>
           </div>
         </>
       )}
     </div>
   );
-}
+  }
