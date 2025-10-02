@@ -30,7 +30,12 @@ const networkLogos: Record<string, string> = {
 
 export default function Dashboard() {
   const [wallet, setWallet] = useState<number>(0);
-  const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, delivered: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    processing: 0,
+    delivered: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState<"customer" | "agent" | "admin" | null>(null);
@@ -57,7 +62,8 @@ export default function Dashboard() {
         .eq("id", user.id)
         .single();
 
-      const userRole = (profile?.role as "customer" | "agent" | "admin") ?? "customer";
+      const userRole =
+        (profile?.role as "customer" | "agent" | "admin") ?? "customer";
       setRole(userRole);
       setWallet(profile?.wallet || 0);
 
@@ -106,7 +112,11 @@ export default function Dashboard() {
           const res = await fetch("/api/paystack/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reference: response.reference, userId, amount }),
+            body: JSON.stringify({
+              reference: response.reference,
+              userId,
+              amount,
+            }),
           });
           const result = await res.json();
           if (result.success) setWallet((prev) => prev + amount);
@@ -134,11 +144,18 @@ export default function Dashboard() {
           const res = await fetch("/api/paystack/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reference: response.reference, userId, amount: 25 }),
+            body: JSON.stringify({
+              reference: response.reference,
+              userId,
+              amount: 25,
+            }),
           });
           const result = await res.json();
           if (result.success) {
-            await supabase.from("profiles").update({ role: "agent" }).eq("id", userId);
+            await supabase
+              .from("profiles")
+              .update({ role: "agent" })
+              .eq("id", userId);
             setRole("agent");
             alert("You are now an Agent! Enjoy discounted bundles.");
           } else alert("Upgrade failed: " + result.error);
@@ -157,7 +174,9 @@ export default function Dashboard() {
       {role === "admin" ? (
         <div className="bg-white shadow-md p-6 rounded-lg text-center">
           <h2 className="text-xl font-bold mb-2">Admin Access</h2>
-          <p className="mb-4 text-gray-600">Manage orders and AFA registrations.</p>
+          <p className="mb-4 text-gray-600">
+            Manage orders and AFA registrations.
+          </p>
           <button
             className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold"
             onClick={() => router.push("/admin")}
@@ -174,11 +193,17 @@ export default function Dashboard() {
               <p className="text-green-600 text-lg">GHS {wallet.toFixed(2)}</p>
             </div>
             <div className="flex gap-2">
-              <button className="bg-green-500 text-white px-3 py-1 rounded-full" onClick={handleDeposit}>
+              <button
+                className="bg-green-500 text-white px-3 py-1 rounded-full"
+                onClick={handleDeposit}
+              >
                 ➕ Deposit
               </button>
               {role === "customer" && (
-                <button className="bg-blue-500 text-white px-3 py-1 rounded-full" onClick={handleUpgrade}>
+                <button
+                  className="bg-blue-500 text-white px-3 py-1 rounded-full"
+                  onClick={handleUpgrade}
+                >
                   ⬆️ Upgrade to Agent
                 </button>
               )}
@@ -187,19 +212,31 @@ export default function Dashboard() {
 
           {/* Order Stats */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-100 p-4 rounded-lg text-center cursor-pointer" onClick={() => router.push("/orders")}>
+            <div
+              className="bg-blue-100 p-4 rounded-lg text-center cursor-pointer"
+              onClick={() => router.push("/orders")}
+            >
               <p>Total</p>
               <h3 className="text-2xl font-bold">{stats.total}</h3>
             </div>
-            <div className="bg-yellow-100 p-4 rounded-lg text-center cursor-pointer" onClick={() => router.push("/orders?status=Pending")}>
+            <div
+              className="bg-yellow-100 p-4 rounded-lg text-center cursor-pointer"
+              onClick={() => router.push("/orders?status=Pending")}
+            >
               <p>Pending</p>
               <h3 className="text-2xl font-bold">{stats.pending}</h3>
             </div>
-            <div className="bg-orange-100 p-4 rounded-lg text-center cursor-pointer" onClick={() => router.push("/orders?status=Processing")}>
+            <div
+              className="bg-orange-100 p-4 rounded-lg text-center cursor-pointer"
+              onClick={() => router.push("/orders?status=Processing")}
+            >
               <p>Processing</p>
               <h3 className="text-2xl font-bold">{stats.processing}</h3>
             </div>
-            <div className="bg-green-100 p-4 rounded-lg text-center cursor-pointer" onClick={() => router.push("/orders?status=Delivered")}>
+            <div
+              className="bg-green-100 p-4 rounded-lg text-center cursor-pointer"
+              onClick={() => router.push("/orders?status=Delivered")}
+            >
               <p>Delivered</p>
               <h3 className="text-2xl font-bold">{stats.delivered}</h3>
             </div>
@@ -223,6 +260,19 @@ export default function Dashboard() {
                     height={50}
                   />
                 </div>
-                <h3 className="text-white font-bold text-center text-lg">{bundle.name}</h3>
+                <h3 className="text-white font-bold text-center text-lg">
+                  {bundle.name}
+                </h3>
                 <p className="text-white text-center">{bundle.size}</p>
-                <p className="text-white text-center font-semibold">GHS {bundle
+                <p className="text-white text-center font-semibold">
+                  GHS {bundle.price.toFixed(2)}
+                </p>
+              </div>
+            ))}
+          </div>
+          <CartWidget />
+        </>
+      )}
+    </div>
+  );
+}
