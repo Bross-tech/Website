@@ -6,12 +6,24 @@ import { Fragment, useState } from "react";
 import { Transition } from "@headlessui/react";
 import { PaystackButton } from "react-paystack";
 
+// 🎨 Define network colors
+const networkColors: Record<string, { bg: string; badge: string }> = {
+  MTN: { bg: "bg-yellow-500 hover:bg-yellow-600 text-black", badge: "bg-black text-white" },
+  Telecel: { bg: "bg-red-600 hover:bg-red-700 text-white", badge: "bg-white text-red-600" },
+  Tigo: { bg: "bg-blue-700 hover:bg-blue-800 text-white", badge: "bg-white text-blue-700" },
+  Airtel: { bg: "bg-black hover:bg-gray-900 text-white", badge: "bg-red-500 text-white" },
+};
+
 export default function FloatingCart() {
   const { items, isOpen, toggleCart, removeFromCart, clearCart } = useCart();
   const { walletBalance, userEmail, userId } = useAuth();
   const [isPaying, setIsPaying] = useState(false);
 
   const total = items.reduce((sum, item) => sum + item.price, 0);
+
+  // Pick last network color (default MTN)
+  const lastNetwork = items.length > 0 ? items[items.length - 1].bundle.network : "MTN";
+  const colors = networkColors[lastNetwork] || networkColors["MTN"];
 
   const paystackConfig = {
     reference: new Date().getTime().toString(),
@@ -20,24 +32,25 @@ export default function FloatingCart() {
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
   };
 
+  // Wallet payment
   const handleWalletPayment = async () => {
     setIsPaying(true);
     try {
       const res = await fetch("/api/wallet/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, amount: total }),
+        body: JSON.stringify({ userId, amount: total, items }),
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Payment successful! New wallet balance: GHS ${data.newBalance}`);
+        alert(`✅ Payment successful! New wallet balance: GHS ${data.newBalance}`);
         clearCart();
       } else {
         alert(data.error || "Wallet payment failed");
       }
     } catch (err) {
       console.error(err);
-      alert("Server error during wallet payment");
+      alert("⚠️ Server error during wallet payment");
     }
     setIsPaying(false);
   };
@@ -49,10 +62,12 @@ export default function FloatingCart() {
       {/* Floating Cart Button */}
       <button
         onClick={toggleCart}
-        className="fixed bottom-5 right-5 z-50 bg-blue-600 text-white px-5 py-3 rounded-full shadow-lg hover:bg-blue-700 transition flex items-center space-x-2"
+        className={`fixed bottom-5 right-5 z-50 px-5 py-3 rounded-full shadow-lg transition flex items-center space-x-2 ${colors.bg}`}
       >
         <span>Cart</span>
-        <span className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-semibold">
+        <span
+          className={`rounded-full w-6 h-6 flex items-center justify-center text-sm font-semibold ${colors.badge}`}
+        >
           {items.length}
         </span>
       </button>
@@ -71,7 +86,7 @@ export default function FloatingCart() {
         <div className="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-40 flex flex-col">
           {/* Header */}
           <div className="flex justify-between items-center p-4 border-b">
-            <h2 className="text-lg font-semibold">My Cart</h2>
+            <h2 className="text-lg font-semibold">🛒 My Cart</h2>
             <button
               onClick={toggleCart}
               className="text-gray-500 hover:text-gray-700 text-xl"
@@ -94,7 +109,7 @@ export default function FloatingCart() {
                       Network: {item.bundle.network}
                     </p>
                     <p className="text-sm text-gray-500">
-                      Data Size: {item.bundle.dataSize}
+                      Size: {item.bundle.dataSize}
                     </p>
                     <p className="text-sm text-gray-500">
                       Recipient: {item.recipient}
@@ -131,7 +146,7 @@ export default function FloatingCart() {
               </button>
 
               {walletBalance < total ? (
-                // Paystack fallback
+                // Paystack Fallback
                 <PaystackButton
                   {...paystackConfig}
                   text={isPaying ? "Processing..." : "Pay Now"}
@@ -141,24 +156,29 @@ export default function FloatingCart() {
                       const res = await fetch("/api/paystack/verify", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ reference: reference.reference, userId, amount: total }),
+                        body: JSON.stringify({
+                          reference: reference.reference,
+                          userId,
+                          amount: total,
+                          items,
+                        }),
                       });
                       const data = await res.json();
                       if (data.success) {
-                        alert(`Payment successful! New balance: GHS ${data.newBalance}`);
+                        alert(`✅ Payment successful! New balance: GHS ${data.newBalance}`);
                         clearCart();
                       } else {
-                        alert("Payment verification failed!");
+                        alert("⚠️ Payment verification failed!");
                       }
                     } catch (err) {
                       console.error(err);
-                      alert("Server error during payment verification");
+                      alert("⚠️ Server error during payment verification");
                     }
                   }}
                   onClose={() => alert("Payment closed")}
                 />
               ) : (
-                // Wallet payment
+                // Wallet Payment
                 <button
                   onClick={handleWalletPayment}
                   className="flex-1 ml-2 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
@@ -173,4 +193,4 @@ export default function FloatingCart() {
       </Transition>
     </>
   );
-      }
+              }
