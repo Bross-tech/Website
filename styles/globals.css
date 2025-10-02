@@ -1,15 +1,14 @@
-/* Global styles for the Next.js app */
+/* styles/globals.css */
+
+/* Reset margins and paddings */
 html, body {
   padding: 0;
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
     Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
 
-  /* ✅ Background image everywhere */
-  background: url("/bg.jpg") no-repeat center center fixed;
-  background-size: cover;
-
-  color: #111827;
+  background: #f9fafb; /* ✅ Light neutral background */
+  color: #111827;      /* Dark gray text for good contrast */
 }
 
 * {
@@ -19,11 +18,24 @@ html, body {
 a {
   color: inherit;
   text-decoration: none;
+  transition: color 0.2s ease;
 }
 
-/* ✅ Keep cards/containers readable */
-.container, .card {
+a:hover {
+  color: #2563eb; /* ✅ Subtle blue hover */
+}
+
+/* ✅ Reusable container */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* ✅ Card styling */
+.card {
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  padding: 1rem;
 }
