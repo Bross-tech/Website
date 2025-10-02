@@ -2,13 +2,15 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 import type { Bundle } from "@/components/Bundles";
-import { useAuth } from "./AuthContext"; // Assumes AuthContext provides user role
+import { useAuth } from "./AuthContext";
 
-// Each item in the cart
 export type CartItem = {
   bundle: Bundle;
   recipient: string;
   price: number;
+  network: string;
+  subType?: string;
+  size: string;
 };
 
 type CartContextType = {
@@ -23,27 +25,31 @@ type CartContextType = {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { role } = useAuth(); // Get user role from AuthContext
+  const { role } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Add item to cart
   const addToCart = (bundle: Bundle, recipient: string) => {
     const price = role === "agent" ? bundle.priceAgent : bundle.priceCustomer;
-
-    setItems((prev) => [...prev, { bundle, recipient, price }]);
-    setIsOpen(true); // Auto-open cart when adding
+    setItems((prev) => [
+      ...prev,
+      {
+        bundle,
+        recipient,
+        price,
+        network: bundle.network,
+        subType: bundle.subType,
+        size: bundle.size,
+      },
+    ]);
+    setIsOpen(true);
   };
 
-  // Remove an item by index
   const removeFromCart = (index: number) => {
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Clear entire cart
   const clearCart = () => setItems([]);
-
-  // Toggle cart sidebar
   const toggleCart = () => setIsOpen((prev) => !prev);
 
   return (
@@ -55,7 +61,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Hook to use cart context
 export function useCart() {
   const ctx = useContext(CartContext);
   if (!ctx) throw new Error("useCart must be used inside CartProvider");
