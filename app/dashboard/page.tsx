@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import CartWidget from "@/components/CartWidget";
 import Image from "next/image";
 
 type Bundle = {
@@ -270,7 +269,6 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-          <CartWidget />
         </>
       )}
     </div>
