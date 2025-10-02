@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // ✅ App Router navigation
+import { useRouter } from "next/navigation"; 
 import { supabase } from "@/lib/supabaseClient";
 import LoginForm from "@/components/LoginForm";
 import SignupForm from "@/components/SignupForm";
-import Navbar from "@/components/Navbar";
+import BottomNav from "@/components/BottomNav"; // ✅ replaced Navbar
 import Bundles from "@/components/Bundles";
-import CartWidget from "@/components/CartWidget";
 import { CartProvider } from "@/context/CartContext";
+// import CartWidget from "@/components/CartWidget"; // ❌ removed for now (caused error)
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -23,13 +23,13 @@ export default function Home() {
 
       if (!currentUser) {
         setLoading(false);
-        return; // show login/signup
+        return;
       }
 
-      // Fetch profile info
+      // fetch profile info
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role,wallet")
+        .select("role,wallet,username")
         .eq("id", currentUser.id)
         .single();
 
@@ -37,7 +37,6 @@ export default function Home() {
       setUser(fullUser);
       setLoading(false);
 
-      // Redirect admins
       if (fullUser?.role === "admin") {
         router.push("/admin");
       }
@@ -45,7 +44,7 @@ export default function Home() {
 
     fetchUser();
 
-    // Subscribe to auth changes
+    // listen for auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       if (!currentUser) {
@@ -66,7 +65,6 @@ export default function Home() {
     );
   }
 
-  // ✅ If no user, show login/signup page
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -75,7 +73,6 @@ export default function Home() {
             {isLogin ? "Login to your account" : "Create a new account"}
           </h1>
 
-          {/* Toggle buttons */}
           <div className="flex justify-center gap-4 mb-6">
             <button
               onClick={() => setIsLogin(true)}
@@ -95,10 +92,8 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Forms */}
           {isLogin ? <LoginForm /> : <SignupForm />}
 
-          {/* Small note */}
           <p className="text-sm text-center text-gray-500 mt-4">
             {isLogin
               ? "Don't have an account? Click Sign Up above."
@@ -109,14 +104,18 @@ export default function Home() {
     );
   }
 
-  // ✅ If logged in (and not admin), show dashboard
   return (
     <CartProvider>
-      <Navbar userId={user?.id} role={user?.role} wallet={user?.wallet ?? 0} />
+      <BottomNav
+        userId={user?.id}
+        username={user?.username}
+        wallet={user?.wallet ?? 0}
+        role={user?.role}
+      />
       <main className="p-6">
         <Bundles />
       </main>
-      <CartWidget />
+      {/* <CartWidget /> */}
     </CartProvider>
   );
 }
