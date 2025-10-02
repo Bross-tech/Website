@@ -76,11 +76,7 @@ export default function Dashboard() {
           const res = await fetch("/api/paystack/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              reference: response.reference,
-              userId,
-              amount,
-            }),
+            body: JSON.stringify({ reference: response.reference, userId, amount }),
           });
           const result = await res.json();
           if (result.success) setWallet((prev) => prev + amount);
@@ -108,18 +104,11 @@ export default function Dashboard() {
           const res = await fetch("/api/paystack/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              reference: response.reference,
-              userId,
-              amount: 25,
-            }),
+            body: JSON.stringify({ reference: response.reference, userId, amount: 25 }),
           });
           const result = await res.json();
           if (result.success) {
-            await supabase
-              .from("profiles")
-              .update({ role: "agent" })
-              .eq("id", userId);
+            await supabase.from("profiles").update({ role: "agent" }).eq("id", userId);
             setRole("agent");
             alert("You are now an Agent! Enjoy discounted bundles.");
           } else alert("Upgrade failed: " + result.error);
@@ -138,9 +127,7 @@ export default function Dashboard() {
       {role === "admin" ? (
         <div className="bg-white shadow-md p-6 rounded-lg text-center">
           <h2 className="text-xl font-bold mb-2">Admin Access</h2>
-          <p className="mb-4 text-gray-600">
-            Manage orders and AFA registrations.
-          </p>
+          <p className="mb-4 text-gray-600">Manage orders and AFA registrations.</p>
           <button
             className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold"
             onClick={() => router.push("/admin")}
@@ -206,7 +193,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Bundles Button */}
+          {/* Bundles Navigation */}
           <div className="mt-6 text-center">
             <button
               onClick={() => router.push("/bundles")}
@@ -219,4 +206,4 @@ export default function Dashboard() {
       )}
     </div>
   );
-  }
+        }
